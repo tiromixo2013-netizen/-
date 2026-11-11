@@ -25,8 +25,8 @@ jobs:
 
       - name: Apply SGSR1 integration
         run: |
-          cp integration/apply_patch.py ./apply_sgsr1_patch.py
-          cp integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
+          cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
+          cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
           python3 ./apply_sgsr1_patch.py
 
       - name: Build Android ARM64 Geode mod
