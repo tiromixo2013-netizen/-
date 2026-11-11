@@ -13,16 +13,15 @@ jobs:
     name: Android64 Geode build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout integration
-        uses: actions/checkout@v4
-        with:
-          path: integration
-
       - name: Checkout BetterVisuals upstream
         uses: actions/checkout@v4
         with:
           repository: ItMe12s/BetterVisuals
-          path: .
+
+      - name: Checkout integration overlay
+        uses: actions/checkout@v4
+        with:
+          path: integration
 
       - name: Apply SGSR1 integration
         run: |
