@@ -124,7 +124,7 @@ mod["id"] = "tiromixo2013.bettervisuals-gsr"
 mod["name"] = "BetterVisuals GSR1"
 version = "v2.3.3"
 if not __import__("re").fullmatch(
-    r"v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?",
+    r"v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?",
     version,
 ):
     raise SystemExit(f"Invalid Geode version: {version}")
