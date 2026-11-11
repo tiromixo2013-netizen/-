@@ -50,9 +50,6 @@ void main()
     const float edgeSharpness = 2.0;
 
     vec4 color = texture2D(u_texture, v_texCoord);
-    float xCenter = abs(v_texCoord.x - 0.5);
-    float yCenter = abs(v_texCoord.y - 0.5);
-
     vec2 imageSize = vec2(1.0) / u_invResolution;
     vec2 imgCoord = (v_texCoord * imageSize) + vec2(-0.5, 0.5);
     vec2 imgCoordPixel = floor(imgCoord);
