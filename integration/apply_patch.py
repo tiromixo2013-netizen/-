@@ -122,7 +122,13 @@ mod_path = Path("mod.json")
 mod = json.loads(mod_path.read_text())
 mod["id"] = "tiromixo2013.bettervisuals-gsr"
 mod["name"] = "BetterVisuals GSR1"
-mod["version"] = "v2.3.3"
+version = "v2.3.3"
+if not __import__("re").fullmatch(
+    r"v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?",
+    version,
+):
+    raise SystemExit(f"Invalid Geode version: {version}")
+mod["version"] = version
 mod["developer"] = "tiromixo2013"
 mod.setdefault("links", {})["source"] = "https://github.com/tiromixo2013-netizen/-"
 opts = mod["settings"]["upscale-method"]["one-of"]
