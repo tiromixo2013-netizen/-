@@ -1,0 +1,45 @@
+name: Build BetterVisuals GSR1 (Android ARM64)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Android64 Geode build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration
+        uses: actions/checkout@v4
+        with:
+          path: integration
+
+      - name: Checkout BetterVisuals upstream
+        uses: actions/checkout@v4
+        with:
+          repository: ItMe12s/BetterVisuals
+          path: .
+
+      - name: Apply SGSR1 integration
+        run: |
+          cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
+          cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
+          python3 ./apply_sgsr1_patch.py
+
+      - name: Build Android ARM64 Geode mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          combine: true
+          target: Android64
+
+      - name: Upload Geode package
+        uses: actions/upload-artifact@v4
+        with:
+          name: BetterVisuals-GSR1-Android64
+          path: build/**/*.geode
+          if-no-files-found: error
+          retention-days: 14
