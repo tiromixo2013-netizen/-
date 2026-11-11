@@ -1,0 +1,6 @@
+The Snapdragon Game Super Resolution 1 shader algorithm in Sgsr1Shader.cpp is adapted from the official Snapdragon Game Super Resolution repository:
+https://github.com/SnapdragonGameStudios/snapdragon-gsr
+Copyright (c) 2025, Qualcomm Innovation Center, Inc.
+SPDX-License-Identifier: BSD-3-Clause
+
+The shader interface is adapted to the GLSL ES 1.00 renderer used by BetterVisuals by replacing textureGather with explicit nearest texture2D taps. The output has not yet been validated on-device.
