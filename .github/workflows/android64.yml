@@ -35,7 +35,7 @@ jobs:
           mod = json.loads(Path('mod.json').read_text())
           version = mod.get('version')
           assert isinstance(version, str), 'mod.json version must be a string'
-          assert re.fullmatch(r'v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?', version), f'Invalid Geode version: {version!r}'
+          assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?', version), f'Invalid Geode version: {version!r}'
           assert mod.get('id') == 'tiromixo2013.bettervisuals-gsr'
           print(f"Validated Geode metadata: {mod['id']} {version}")
           PY
