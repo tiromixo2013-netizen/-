@@ -50,39 +50,45 @@ sub("""        if (value == "FSR 1") {
         }
 
         if (value != "Nearest") {""")
-sub("""                if (config.upscaling == UpscaleMethod::Fsr) {
-                    g_renderScaleRenderer.reset();
-                    g_ssaaRenderer.reset();
-                    prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
-                }
-                else {
-                    g_fsrRenderer.reset();
-                    g_ssaaRenderer.reset();
-                    prepared = g_renderScaleRenderer.prepare(
-                        bv::shaders::kRenderScaleShader, key.width, key.height
-                    );
-                }""", """                if (config.upscaling == UpscaleMethod::Fsr) {
-                    g_renderScaleRenderer.reset();
-                    g_sgsr1Renderer.reset();
-                    g_ssaaRenderer.reset();
-                    prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
-                }
-                else if (config.upscaling == UpscaleMethod::Sgsr1) {
-                    g_renderScaleRenderer.reset();
-                    g_fsrRenderer.reset();
-                    g_ssaaRenderer.reset();
-                    prepared = g_sgsr1Renderer.prepare(
-                        bv::shaders::kSgsr1Shader, key.width, key.height
-                    );
-                }
-                else {
-                    g_fsrRenderer.reset();
-                    g_sgsr1Renderer.reset();
-                    g_ssaaRenderer.reset();
-                    prepared = g_renderScaleRenderer.prepare(
-                        bv::shaders::kRenderScaleShader, key.width, key.height
-                    );
-                }""")
+sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
+                g_renderScaleRenderer.reset();
+                g_ssaaRenderer.reset();
+                prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
+            }
+            else {
+                g_fsrRenderer.reset();
+                g_ssaaRenderer.reset();
+                prepared = g_renderScaleRenderer.prepare(
+                    bv::shaders::kRenderScaleShader, key.width, key.height
+                );
+            }""", """            else if (config.upscaling == UpscaleMethod::Fsr) {
+                g_renderScaleRenderer.reset();
+                g_sgsr1Renderer.reset();
+                g_ssaaRenderer.reset();
+                prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
+            }
+            else if (config.upscaling == UpscaleMethod::Sgsr1) {
+                g_renderScaleRenderer.reset();
+                g_fsrRenderer.reset();
+                g_ssaaRenderer.reset();
+                prepared = g_sgsr1Renderer.prepare(
+                    bv::shaders::kSgsr1Shader, key.width, key.height
+                );
+            }
+            else {
+                g_fsrRenderer.reset();
+                g_sgsr1Renderer.reset();
+                g_ssaaRenderer.reset();
+                prepared = g_renderScaleRenderer.prepare(
+                    bv::shaders::kRenderScaleShader, key.width, key.height
+                );
+            }""")
+sub("""            if (key.needsDownsample) {
+                g_fsrRenderer.reset();
+                g_renderScaleRenderer.reset();""", """            if (key.needsDownsample) {
+                g_fsrRenderer.reset();
+                g_sgsr1Renderer.reset();
+                g_renderScaleRenderer.reset();""")
 sub("""            g_renderScaleRenderer.reset();
             g_fsrRenderer.reset();
             g_ssaaRenderer.reset();""", """            g_renderScaleRenderer.reset();
