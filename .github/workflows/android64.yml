@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ItMe12s/BetterVisuals
+          ref: master
 
       - name: Checkout integration overlay
         uses: actions/checkout@v4
@@ -28,6 +29,17 @@ jobs:
           cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
           cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
           python3 ./apply_sgsr1_patch.py
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          mod = json.loads(Path('mod.json').read_text())
+          version = mod.get('version')
+          assert isinstance(version, str), 'mod.json version must be a string'
+          assert re.fullmatch(r'v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?', version), f'Invalid Geode version: {version!r}'
+          assert mod.get('id') == 'tiromixo2013.bettervisuals-gsr'
+          print(f"Validated Geode metadata: {mod['id']} {version}")
+          PY
+          test -s src/shaders/Sgsr1Shader.cpp
 
       - name: Build Android ARM64 Geode mod
         uses: geode-sdk/build-geode-mod@main
