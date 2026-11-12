@@ -25,24 +25,20 @@ def sub(old, new):
 
 sub("""#include "render/PostProcessRenderer.hpp"
 """, """#include "render/PostProcessRenderer.hpp"
-#include "render/Fsr12Renderer.hpp"
 """)
 
 sub("""        Fsr,
     };""", """        Fsr,
-        Fsr12,
         Sgsr1,
         Lanczos3,
     };""")
 sub("""    bv::render::PostProcessRenderer g_fsrRenderer;
     bv::render::PostProcessRenderer g_casRenderer;""", """    bv::render::PostProcessRenderer g_fsrRenderer;
-    bv::render::Fsr12Renderer g_fsr12Renderer;
     bv::render::PostProcessRenderer g_sgsr1Renderer;
     bv::render::PostProcessRenderer g_lanczosRenderer;
     bv::render::PostProcessRenderer g_casRenderer;""")
 sub("""        g_fsrRenderer.reset();
         g_casRenderer.reset();""", """        g_fsrRenderer.reset();
-        g_fsr12Renderer.reset();
         g_sgsr1Renderer.reset();
         g_lanczosRenderer.reset();
         g_casRenderer.reset();""")
@@ -54,10 +50,6 @@ sub("""        if (value == "FSR 1") {
         if (value != "Nearest") {""", """        Mod::get()->setSavedValue<bool>("upscale-preset-enabled", true);
         if (value == "FSR 1") {
             g_upscaleMethod.store(UpscaleMethod::Fsr, std::memory_order_relaxed);
-            return;
-        }
-        if (value == "FSR 1.2") {
-            g_upscaleMethod.store(UpscaleMethod::Fsr12, std::memory_order_relaxed);
             return;
         }
         if (value == "SGSR1") {
@@ -83,26 +75,14 @@ sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
                 );
             }""", """            else if (config.upscaling == UpscaleMethod::Fsr) {
                 g_renderScaleRenderer.reset();
-                g_fsr12Renderer.reset();
                 g_sgsr1Renderer.reset();
                 g_lanczosRenderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
             }
-            else if (config.upscaling == UpscaleMethod::Fsr12) {
-                g_fsrRenderer.reset();
-                g_sgsr1Renderer.reset();
-                g_lanczosRenderer.reset();
-                g_ssaaRenderer.reset();
-                prepared = g_fsr12Renderer.prepare(
-                    bv::shaders::kFsrShader, bv::shaders::kFsrRcasShader,
-                    key.width, key.height, key.outputWidth, key.outputHeight
-                );
-            }
             else if (config.upscaling == UpscaleMethod::Sgsr1) {
                 g_renderScaleRenderer.reset();
                 g_fsrRenderer.reset();
-                g_fsr12Renderer.reset();
                 g_lanczosRenderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_sgsr1Renderer.prepare(
@@ -112,7 +92,6 @@ sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
             else if (config.upscaling == UpscaleMethod::Lanczos3) {
                 g_renderScaleRenderer.reset();
                 g_fsrRenderer.reset();
-                g_fsr12Renderer.reset();
                 g_sgsr1Renderer.reset();
                 g_lanczosRenderer.reset();
                 g_ssaaRenderer.reset();
@@ -122,7 +101,6 @@ sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
             }
             else {
                 g_fsrRenderer.reset();
-                g_fsr12Renderer.reset();
                 g_sgsr1Renderer.reset();
                 g_lanczosRenderer.reset();
                 g_ssaaRenderer.reset();
@@ -134,7 +112,6 @@ sub("""            if (key.needsDownsample) {
                 g_fsrRenderer.reset();
                 g_renderScaleRenderer.reset();""", """            if (key.needsDownsample) {
                 g_fsrRenderer.reset();
-                g_fsr12Renderer.reset();
                 g_sgsr1Renderer.reset();
                 g_lanczosRenderer.reset();
                 g_renderScaleRenderer.reset();""")
@@ -142,7 +119,6 @@ sub("""            g_renderScaleRenderer.reset();
             g_fsrRenderer.reset();
             g_ssaaRenderer.reset();""", """            g_renderScaleRenderer.reset();
             g_fsrRenderer.reset();
-            g_fsr12Renderer.reset();
             g_sgsr1Renderer.reset();
             g_lanczosRenderer.reset();
             g_ssaaRenderer.reset();""")
@@ -154,14 +130,6 @@ sub("""                else if (config.upscaling == UpscaleMethod::Fsr) {
                 }""", """                else if (config.upscaling == UpscaleMethod::Fsr) {
                     g_fsrRenderer.apply(sourceTexture, g_fsrSharpness.load(std::memory_order_relaxed));
                 }
-                else if (config.upscaling == UpscaleMethod::Fsr12) {
-                    g_fsr12Renderer.apply(
-                        sourceTexture, callerTarget.framebuffer,
-                        callerTarget.x, callerTarget.y,
-                        callerTarget.width, callerTarget.height,
-                        g_fsrSharpness.load(std::memory_order_relaxed)
-                    );
-                }
                 else if (config.upscaling == UpscaleMethod::Sgsr1) {
                     g_sgsr1Renderer.apply(sourceTexture);
                 }
@@ -171,19 +139,6 @@ sub("""                else if (config.upscaling == UpscaleMethod::Fsr) {
                 else {
                     g_renderScaleRenderer.apply(sourceTexture);
                 }""")
-sub("""    struct PostProcessKey {
-        PostProcessConfig config;
-        GLsizei width = 0;
-        GLsizei height = 0;""", """    struct PostProcessKey {
-        PostProcessConfig config;
-        GLsizei width = 0;
-        GLsizei height = 0;
-        GLsizei outputWidth = 0;
-        GLsizei outputHeight = 0;""")
-sub("""            config, internalWidth, internalHeight, needsPresentation, needsDownsample
-        };""", """            config, internalWidth, internalHeight, width, height,
-            needsPresentation, needsDownsample
-        };""")
 sub("""    std::atomic<float> g_renderScale = 1.f;""", """    std::atomic<float> g_renderScale = 1.f;
     std::atomic<float> g_upscalePresetScale = 0.67f;""")
 sub("""    void bindBoolSetting(char const* name, std::atomic<bool>& value) {""", """    void updateUpscaleQualityPreset(std::string_view value) {
@@ -201,8 +156,9 @@ sub("""    void bindBoolSetting(char const* name, std::atomic<bool>& value) {"""
 sub("""        auto const renderScale = g_renderScale.load(std::memory_order_relaxed);
         auto const effectiveScale = renderScale * ssaaFactor(config.aa);""", """        auto const manualRenderScale = g_renderScale.load(std::memory_order_relaxed);
         auto const upscalePresetScale = g_upscalePresetScale.load(std::memory_order_relaxed);
-        // All spatial filters share this input-resolution control; reconstruction remains independent.
-        auto const effectiveScale = manualRenderScale * upscalePresetScale * ssaaFactor(config.aa);""")
+        auto const presetScale = config.upscaling == UpscaleMethod::Lanczos3 ? upscalePresetScale : 1.f;
+        auto const effectiveScale = manualRenderScale * presetScale * ssaaFactor(config.aa);""")
+
 sub("""    bindStringSetting("upscale-method", updateUpscaleMethod);""", """    bindStringSetting("upscale-method", updateUpscaleMethod);
     bindStringSetting("upscale-quality-preset", updateUpscaleQualityPreset);""")
 main.write_text(s)
@@ -229,18 +185,16 @@ mod["geode"] = "5.11.2"
 mod["developer"] = "tiromixo2013"
 mod.setdefault("links", {})["source"] = "https://github.com/tiromixo2013-netizen/-"
 opts = mod["settings"]["upscale-method"]["one-of"]
-if "FSR 1.2" not in opts:
-    opts.append("FSR 1.2")
 if "SGSR1" not in opts:
     opts.append("SGSR1")
 if "Lanczos 3" not in opts:
     opts.append("Lanczos 3")
 mod["settings"]["upscale-method"]["description"] = (
-    "Choose an independent spatial upscaler: Nearest, Bilinear, FSR 1, FSR 1.2, SGSR1, or Lanczos 3."
+    "Choose an independent spatial upscaler: Nearest, Bilinear, FSR 1, SGSR1, or Lanczos 3."
 )
-mod["settings"]["fsr-sharpness"]["name"] = "FSR 1 / FSR 1.2 RCAS Sharpness"
+mod["settings"]["fsr-sharpness"]["name"] = "FSR 1 Sharpness"
 mod["settings"]["fsr-sharpness"]["description"] = (
-    "Controls FSR 1 reconstruction blend and FSR 1.2 RCAS sharpening."
+    "Controls FSR 1 reconstruction blend."
 )
 mod["settings"]["upscale-quality-preset"] = {
     "type": "string",
@@ -254,4 +208,4 @@ mod["settings"]["upscale-quality-preset"] = {
 mod_path.write_text(json.dumps(mod, indent=2) + "\n")
 
 # Keep the upstream v2.3.8 EASU shader unchanged; only add independent new paths.
-print("Independent FSR1 EASU, FSR1+RCAS, SGSR1, and Lanczos3 paths applied.")
+print("Preserved upstream FSR1 and SGSR1; added independent Lanczos3 path.")
