@@ -38,7 +38,7 @@ jobs:
           mod = json.loads(Path('mod.json').read_text())
           version = mod.get('version')
           assert isinstance(version, str), 'mod.json version must be a string'
-          assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?', version), f'Invalid Geode version: {version!r}'
+          assert re.fullmatch(r'v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?', version), f'Invalid Geode version: {version!r}'
           assert mod.get('id') == 'tiromixo2013.bettervisuals-gsr'
           print(f"Validated Geode metadata: {mod['id']} {version}")
           PY
@@ -61,6 +61,62 @@ jobs:
       - name: Combine Geode build
         uses: geode-sdk/build-geode-mod/combine@main
         id: build
+
+      - name: Fix packaged Geode compatibility metadata
+        env:
+          BUILD_OUTPUT: ${{ steps.build.outputs.build-output }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, tempfile, zipfile
+          raw = os.environ.get("BUILD_OUTPUT", "")
+          candidates = []
+          if raw:
+              p = pathlib.Path(raw)
+              if p.is_file() and p.suffix == ".geode":
+                  candidates.append(p)
+              elif p.is_dir():
+                  candidates.extend(p.rglob("*.geode"))
+          if not candidates:
+              candidates = list(pathlib.Path.cwd().rglob("*.geode"))
+          candidates = list(dict.fromkeys(p.resolve() for p in candidates if p.is_file()))
+          if len(candidates) != 1:
+              raise SystemExit(f"Expected exactly one .geode package, found {len(candidates)}: {candidates}")
+          package = candidates[0]
+          with zipfile.ZipFile(package, "r") as src:
+              entries = [(i, src.read(i.filename)) for i in src.infolist()]
+          manifest_entries = [n for n, data in entries if n.filename == "mod.json"]
+          if len(manifest_entries) != 1:
+              raise SystemExit(f"Expected one root mod.json, found {len(manifest_entries)}")
+          updated = []
+          for info, data in entries:
+              if info.filename == "mod.json":
+                  mod = json.loads(data.decode("utf-8"))
+                  if mod.get("id") != "tiromixo2013.bettervisuals-gsr":
+                      raise SystemExit(f"Unexpected mod id: {mod.get('id')!r}")
+                  # The build SDK consumes 5.11.2 without the prefix, but the
+                  # installed Geode loader expects the serialized compatibility
+                  # version in the package to be v5.11.2.
+                  mod["geode"] = "v5.11.2"
+                  data = (json.dumps(mod, indent=2) + "\\n").encode("utf-8")
+              updated.append((info, data))
+          fd, temp_name = tempfile.mkstemp(suffix=".geode", dir=package.parent)
+          os.close(fd)
+          try:
+              with zipfile.ZipFile(temp_name, "w") as dst:
+                  for info, data in updated:
+                      dst.writestr(info, data)
+              with zipfile.ZipFile(temp_name, "r") as check:
+                  mod = json.loads(check.read("mod.json"))
+                  assert mod["geode"] == "v5.11.2", mod.get("geode")
+                  assert mod["id"] == "tiromixo2013.bettervisuals-gsr"
+                  assert any(n.endswith(".android64.so") for n in check.namelist())
+                  assert check.testzip() is None
+              os.replace(temp_name, package)
+          finally:
+              if os.path.exists(temp_name):
+                  os.unlink(temp_name)
+          print(f"Patched and validated {package}: geode={mod['geode']}, id={mod['id']}")
+          PY
 
       - name: Upload Geode package
         uses: actions/upload-artifact@v4
