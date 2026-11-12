@@ -1,6 +1,7 @@
 #include "Fsr12Renderer.hpp"
 
 #include <Geode/Geode.hpp>
+#include <cassert>
 
 using namespace geode::prelude;
 
