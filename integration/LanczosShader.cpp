@@ -1,5 +1,5 @@
-#include "../render/PostProcessRenderer.hpp"
-#include "PostProcessShaders.hpp"
+#include "../../render/PostProcessRenderer.hpp"
+#include "../PostProcessShaders.hpp"
 
 namespace bv::shaders::lanczos {
 constexpr char kFragmentSource[] = R"glsl(
