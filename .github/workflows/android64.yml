@@ -65,7 +65,7 @@ jobs:
       - name: Upload Geode package
         uses: actions/upload-artifact@v4
         with:
-          name: BetterVisuals-GSR1-Android64
+          name: BetterVisuals-FSR-SGSR-Android64
           path: ${{ steps.build.outputs.build-output }}
           if-no-files-found: error
           retention-days: 14
