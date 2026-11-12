@@ -158,7 +158,7 @@ sub("""    struct PostProcessKey {
 sub("""            config, internalWidth, internalHeight, needsPresentation, needsDownsample
         };""", """            config, internalWidth, internalHeight, width, height,
             needsPresentation, needsDownsample
-        };")
+        };""")
 sub("""    std::atomic<float> g_renderScale = 1.f;""", """    std::atomic<float> g_renderScale = 1.f;
     std::atomic<float> g_fsrPresetScale = 0.67f;""")
 sub("""    void bindBoolSetting(char const* name, std::atomic<bool>& value) {""", """    void updateFsrQualityPreset(std::string_view value) {
