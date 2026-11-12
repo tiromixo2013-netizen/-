@@ -11,7 +11,7 @@ This repository builds an Android ARM64 Geode package that adds a separate SGSR1
 
 ## Build
 
-A push to `main` starts `.github/workflows/android64.yml`. The workflow checks out BetterVisuals, applies `integration/apply_patch.py`, copies the SGSR1 and FSR RCAS shaders into the upstream shader directories, builds Android64 with the Geode build action, and uploads the resulting `.geode` package as the `BetterVisuals-GSR1-Android64` artifact.
+A push to `main` starts `.github/workflows/android64.yml`. The workflow checks out BetterVisuals, applies `integration/apply_patch.py`, copies the SGSR1 shader into the upstream shader directory, builds Android64 with the Geode build action, and uploads the resulting `.geode` package as the `BetterVisuals-GSR1-Android64` artifact.
 
 The patch validates the Geode version string against the version tags supported by Geode before writing `mod.json`. The generated package must still pass CI and be tested in-game before it can be described as verified.
 
