@@ -23,6 +23,11 @@ def sub(old, new):
         raise SystemExit(f"main.cpp patch point count {count}, expected 1: {old[:90]!r}")
     s = s.replace(old, new, 1)
 
+sub("""#include "render/PostProcessRenderer.hpp"
+""", """#include "render/PostProcessRenderer.hpp"
+#include "render/Fsr12Renderer.hpp"
+""")
+
 sub("""        Fsr,
     };""", """        Fsr,
         Fsr12,
@@ -60,6 +65,8 @@ sub("""        if (value == "FSR 1") {
         if (value != "Nearest") {""")
 sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
                 g_renderScaleRenderer.reset();
+                g_fsr12Renderer.reset();
+                g_sgsr1Renderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
             }
@@ -87,6 +94,7 @@ sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
             else if (config.upscaling == UpscaleMethod::Sgsr1) {
                 g_renderScaleRenderer.reset();
                 g_fsrRenderer.reset();
+                g_fsr12Renderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_sgsr1Renderer.prepare(
                     bv::shaders::kSgsr1Shader, key.width, key.height
@@ -94,6 +102,7 @@ sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
             }
             else {
                 g_fsrRenderer.reset();
+                g_fsr12Renderer.reset();
                 g_sgsr1Renderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_renderScaleRenderer.prepare(
@@ -204,6 +213,10 @@ if "SGSR1" not in opts:
     opts.append("SGSR1")
 mod["settings"]["upscale-method"]["description"] = (
     "Choose an independent spatial upscaler: FSR 1 (EASU), FSR 1.2 (EASU + RCAS), or SGSR1."
+)
+mod["settings"]["fsr-sharpness"]["name"] = "FSR 1 / FSR 1.2 RCAS Sharpness"
+mod["settings"]["fsr-sharpness"]["description"] = (
+    "Controls FSR 1 reconstruction blend and FSR 1.2 RCAS sharpening."
 )
 mod["settings"]["fsr-quality-preset"] = {
     "type": "string",
