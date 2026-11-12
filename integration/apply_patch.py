@@ -221,7 +221,7 @@ mod_path = Path("mod.json")
 mod = json.loads(mod_path.read_text())
 mod["id"] = "tiromixo2013.bettervisuals-gsr"
 mod["name"] = "BetterVisuals GSR1"
-version = "v2.3.4"
+version = "v2.3.5"
 if not __import__("re").fullmatch(
     r"v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?",
     version,
@@ -231,16 +231,10 @@ mod["version"] = version
 mod["developer"] = "tiromixo2013"
 mod.setdefault("links", {})["source"] = "https://github.com/tiromixo2013-netizen/-"
 opts = mod["settings"]["upscale-method"]["one-of"]
-if "FSR 1" in opts:
-    opts[opts.index("FSR 1")] = "FSR 1.2 (EASU + RCAS)"
 if "SGSR1" not in opts:
     opts.append("SGSR1")
 mod["settings"]["upscale-method"]["description"] = (
     "Choose the spatial upscaler: FSR EASU + RCAS or Qualcomm SGSR1."
-)
-mod["settings"]["fsr-sharpness"]["name"] = "FSR RCAS Sharpness"
-mod["settings"]["fsr-sharpness"]["description"] = (
-    "RCAS sharpening strength after FSR EASU upscaling."
 )
 mod_path.write_text(json.dumps(mod, indent=2) + "\n")
 
