@@ -49,6 +49,7 @@ sub("""        if (value == "FSR 1") {
         }
 
         if (value != "Nearest") {""", """        Mod::get()->setSavedValue<bool>("fsr-preset-enabled", value == "FSR 1" || value == "FSR 1.2");
+        Mod::get()->setSavedValue<bool>("sgsr1-preset-enabled", value == "SGSR1");
         if (value == "FSR 1") {
             g_upscaleMethod.store(UpscaleMethod::Fsr, std::memory_order_relaxed);
             return;
@@ -158,7 +159,8 @@ sub("""            config, internalWidth, internalHeight, needsPresentation, nee
             needsPresentation, needsDownsample
         };""")
 sub("""    std::atomic<float> g_renderScale = 1.f;""", """    std::atomic<float> g_renderScale = 1.f;
-    std::atomic<float> g_fsrPresetScale = 0.67f;""")
+    std::atomic<float> g_fsrPresetScale = 0.67f;
+    std::atomic<float> g_sgsr1PresetScale = 0.67f;""")
 sub("""    void bindBoolSetting(char const* name, std::atomic<bool>& value) {""", """    void updateFsrQualityPreset(std::string_view value) {
         float scale = 0.67f;
         if (value == "Ultra Quality") scale = 0.77f;
@@ -170,6 +172,17 @@ sub("""    void bindBoolSetting(char const* name, std::atomic<bool>& value) {"""
         g_fsrPresetScale.store(scale, std::memory_order_relaxed);
     }
 
+    void updateSgsr1QualityPreset(std::string_view value) {
+        float scale = 0.67f;
+        if (value == "Ultra Quality") scale = 0.77f;
+        else if (value == "Quality") scale = 0.67f;
+        else if (value == "Balanced") scale = 0.59f;
+        else if (value == "Performance") scale = 0.50f;
+        else if (value == "Ultra Performance") scale = 0.33f;
+        else log::warn("Unknown SGSR1 quality preset '{}', using Quality", value);
+        g_sgsr1PresetScale.store(scale, std::memory_order_relaxed);
+    }
+
     void bindBoolSetting(char const* name, std::atomic<bool>& value) {""")
 sub("""        auto const renderScale = g_renderScale.load(std::memory_order_relaxed);
         auto const effectiveScale = renderScale * ssaaFactor(config.aa);""", """        auto const manualRenderScale = g_renderScale.load(std::memory_order_relaxed);
@@ -177,9 +190,12 @@ sub("""        auto const renderScale = g_renderScale.load(std::memory_order_rel
             config.upscaling == UpscaleMethod::Fsr12;
         auto const fsrPresetScale = usesFsrPreset ?
             g_fsrPresetScale.load(std::memory_order_relaxed) : 1.f;
-        auto const effectiveScale = manualRenderScale * fsrPresetScale * ssaaFactor(config.aa);""")
+        auto const sgsr1PresetScale = config.upscaling == UpscaleMethod::Sgsr1 ?
+            g_sgsr1PresetScale.load(std::memory_order_relaxed) : 1.f;
+        auto const effectiveScale = manualRenderScale * fsrPresetScale * sgsr1PresetScale * ssaaFactor(config.aa);""")
 sub("""    bindStringSetting("upscale-method", updateUpscaleMethod);""", """    bindStringSetting("upscale-method", updateUpscaleMethod);
-    bindStringSetting("fsr-quality-preset", updateFsrQualityPreset);""")
+    bindStringSetting("fsr-quality-preset", updateFsrQualityPreset);
+    bindStringSetting("sgsr1-quality-preset", updateSgsr1QualityPreset);""")
 main.write_text(s)
 
 shader_header = Path("src/shaders/PostProcessShaders.hpp")
@@ -223,6 +239,15 @@ mod["settings"]["fsr-quality-preset"] = {
     "one-of": ["Ultra Quality", "Quality", "Balanced", "Performance", "Ultra Performance"],
     "enable-if": "saved:fsr-preset-enabled",
     "enable-if-description": "Select FSR 1 or FSR 1.2 in Upscale Method"
+}
+mod["settings"]["sgsr1-quality-preset"] = {
+    "type": "string",
+    "name": "SGSR1 Quality Preset",
+    "description": "Controls SGSR1 internal rendering resolution. Multiplies the manual Render Scale without changing FSR presets.",
+    "default": "Quality",
+    "one-of": ["Ultra Performance", "Performance", "Balanced", "Quality", "Ultra Quality"],
+    "enable-if": "saved:sgsr1-preset-enabled",
+    "enable-if-description": "Select SGSR1 in Upscale Method"
 }
 mod_path.write_text(json.dumps(mod, indent=2) + "\n")
 
