@@ -38,7 +38,7 @@ jobs:
           mod = json.loads(Path('mod.json').read_text())
           version = mod.get('version')
           assert isinstance(version, str), 'mod.json version must be a string'
-          assert re.fullmatch(r'v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?', version), f'Invalid Geode version: {version!r}'
+          assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?', version), f'Invalid Geode version: {version!r}'
           assert mod.get('id') == 'tiromixo2013.bettervisuals-gsr'
           print(f"Validated Geode metadata: {mod['id']} {version}")
           PY
@@ -97,7 +97,7 @@ jobs:
                   # installed Geode loader expects the serialized compatibility
                   # version in the package to be v5.11.2.
                   mod["geode"] = "v5.11.2"
-                  data = (json.dumps(mod, indent=2) + "\\n").encode("utf-8")
+                  data = (json.dumps(mod, indent=2) + "\n").encode("utf-8")
               updated.append((info, data))
           fd, temp_name = tempfile.mkstemp(suffix=".geode", dir=package.parent)
           os.close(fd)
