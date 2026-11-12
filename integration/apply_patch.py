@@ -140,7 +140,7 @@ h = shader_header.read_text()
 old = "    extern render::PostProcessShader const kFsrShader;\n"
 if h.count(old) != 1:
     raise SystemExit("Could not locate FSR shader declaration")
-shader_header.write_text(h.replace(old, old + "    extern render::PostProcessShader const kSgsr1Shader;\n    extern render::PostProcessShader const kFsrRcasShader;\n", 1))
+shader_header.write_text(h.replace(old, old + "    extern render::PostProcessShader const kSgsr1Shader;\n", 1))
 
 mod_path = Path("mod.json")
 mod = json.loads(mod_path.read_text())
