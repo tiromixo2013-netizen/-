@@ -65,8 +65,6 @@ sub("""        if (value == "FSR 1") {
         if (value != "Nearest") {""")
 sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
                 g_renderScaleRenderer.reset();
-                g_fsr12Renderer.reset();
-                g_sgsr1Renderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
             }
@@ -78,6 +76,7 @@ sub("""            else if (config.upscaling == UpscaleMethod::Fsr) {
                 );
             }""", """            else if (config.upscaling == UpscaleMethod::Fsr) {
                 g_renderScaleRenderer.reset();
+                g_fsr12Renderer.reset();
                 g_sgsr1Renderer.reset();
                 g_ssaaRenderer.reset();
                 prepared = g_fsrRenderer.prepare(bv::shaders::kFsrShader, key.width, key.height);
