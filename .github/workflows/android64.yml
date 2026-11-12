@@ -88,7 +88,7 @@ jobs:
                   raise SystemExit("Package must contain exactly one root mod.json")
               mod = json.loads(archive.read("mod.json").decode("utf-8"))
               assert mod.get("id") == "tiromixo2013.bettervisuals-gsr", mod.get("id")
-              assert mod.get("geode") == "v5.11.2", mod.get("geode")
+              assert mod.get("geode") == "5.11.2", mod.get("geode")
               assert any(name.endswith(".android64.so") for name in names)
               assert archive.testzip() is None
           print(f"Read-only validation passed: {package}; id={mod['id']}; geode={mod['geode']}")
