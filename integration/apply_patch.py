@@ -204,7 +204,7 @@ if not __import__("re").fullmatch(
     raise SystemExit(f"Invalid Geode version: {version}")
 mod["version"] = version
 # Target the exact stable Geode loader used by the project device.
-mod["geode"] = "v5.11.2"
+mod["geode"] = "5.11.2"
 mod["developer"] = "tiromixo2013"
 mod.setdefault("links", {})["source"] = "https://github.com/tiromixo2013-netizen/-"
 opts = mod["settings"]["upscale-method"]["one-of"]
