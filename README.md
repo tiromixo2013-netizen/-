@@ -1,6 +1,6 @@
 # BetterVisuals + FSR 1 + FSR 1.2 + Snapdragon GSR1
 
-This repository builds an Android ARM64 Geode package that adds three selectable spatial paths: the upstream FSR 1 path, a separate two-pass FSR 1.2 EASU+RCAS path, and an independent SGSR1 path.
+This repository builds an Android ARM64 Geode package with selectable spatial paths: Nearest, Bilinear, FSR 1, FSR 1.2 EASU+RCAS, SGSR1, and Lanczos 3.
 
 ## Target
 
@@ -21,9 +21,11 @@ The patch validates the Geode version string against the version tags supported 
 - FSR 1 keeps BetterVisuals' original single-pass EASU path.
 - FSR 1.2 is exposed as a separate two-pass renderer: EASU into an intermediate texture, followed by a dedicated RCAS shader into the display target. It has its own framebuffer and renderer lifecycle. Technically, FSR 1.2 is a revision within the FSR 1 family, so EASU remains the shared core; the added RCAS pass is what distinguishes this complete path from the existing EASU-only option.
 - Both FSR choices expose the same five resolution presets: Ultra Quality 0.77, Quality 0.67, Balanced 0.59, Performance 0.50, Ultra Performance 0.33. Presets multiply the manual Render Scale; neither control overwrites the other.
-- SGSR1 has its own shader and renderer path and does not share the FSR preset scale.
+- SGSR1 and Lanczos 3 keep independent reconstruction paths; all selectable spatial methods share the same internal-resolution presets.
+- Shared presets: Ultra Performance 0.33, Performance 0.50, Balanced 0.59, Quality 0.67, Ultra Quality 0.77. Each multiplies the manual Render Scale.
 - These are spatial upscalers, not FSR 2/3 or frame generation. AMD's FSR 1 documentation describes EASU and RCAS as the two stages of the FSR 1 technique.
 - SGSR1 is an adapted GLSL ES 1.00 spatial shader using explicit texture taps in place of `textureGather`.
+- Lanczos 3 is a spatial reconstruction filter, not AI upscaling; its 6x6 sampling kernel may cost more GPU time than Nearest/Bilinear.
 - Runtime image quality, device compatibility, and performance still require physical Android testing. Do not treat SGSR1 as Qualcomm-certified or device-verified.
 
 ## Third-party license

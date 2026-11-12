@@ -1,7 +1,9 @@
-name: Build BetterVisuals GSR1 + FSR 1 and 1.2 (Android ARM64)
+name: Build BetterVisuals SGSR1 + Lanczos3 (Android ARM64)
 
 on:
   push:
+    branches: [main, 'feature/**']
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -24,13 +26,11 @@ jobs:
         with:
           path: integration
 
-      - name: Apply SGSR1 and FSR integration
+      - name: Apply SGSR1 and Lanczos3 integration
         run: |
           cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
           cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
-          cp integration/integration/FsrRcasShader.cpp ./src/shaders/upscale/FsrRcasShader.cpp
-          cp integration/integration/Fsr12Renderer.hpp ./src/render/Fsr12Renderer.hpp
-          cp integration/integration/Fsr12Renderer.cpp ./src/render/Fsr12Renderer.cpp
+          cp integration/integration/LanczosShader.cpp ./src/shaders/upscale/LanczosShader.cpp
           python3 ./apply_sgsr1_patch.py
           python3 - <<'PY'
           import json, re
@@ -43,9 +43,8 @@ jobs:
           print(f"Validated Geode metadata: {mod['id']} {version}")
           PY
           test -s src/shaders/Sgsr1Shader.cpp
-          test -s src/shaders/upscale/FsrRcasShader.cpp
-          test -s src/render/Fsr12Renderer.hpp
-          test -s src/render/Fsr12Renderer.cpp
+
+          test -s src/shaders/upscale/LanczosShader.cpp
 
       - name: Build Android ARM64 Geode mod
         uses: geode-sdk/build-geode-mod@main
@@ -119,7 +118,7 @@ jobs:
       - name: Upload Geode package
         uses: actions/upload-artifact@v4
         with:
-          name: BetterVisuals-FSR-SGSR-Android64
+          name: BetterVisuals-SGSR1-Lanczos3-Android64
           path: ${{ steps.build.outputs.build-output }}
           if-no-files-found: error
           retention-days: 14
