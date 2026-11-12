@@ -2,6 +2,8 @@ name: Build BetterVisuals GSR1 + FSR 1 and 1.2 (Android ARM64)
 
 on:
   push:
+    branches: [main, feature/sgsr1-quality-presets-only]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
