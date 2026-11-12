@@ -19,10 +19,10 @@ The patch validates the Geode version string against the version tags supported 
 
 - SGSR1 is exposed as a separate upscale option and uses BetterVisuals' existing post-process renderer.
 - FSR 1 keeps BetterVisuals' original single-pass EASU path.
-- FSR 1.2 is a separate two-pass renderer: EASU into an intermediate texture, followed by a dedicated RCAS shader into the display target. It has its own framebuffer and renderer lifecycle; it is not an alias for FSR 1.
+- FSR 1.2 is exposed as a separate two-pass renderer: EASU into an intermediate texture, followed by a dedicated RCAS shader into the display target. It has its own framebuffer and renderer lifecycle. Technically, FSR 1.2 is a revision within the FSR 1 family, so EASU remains the shared core; the added RCAS pass is what distinguishes this complete path from the existing EASU-only option.
 - Both FSR choices expose the same five resolution presets: Ultra Quality 0.77, Quality 0.67, Balanced 0.59, Performance 0.50, Ultra Performance 0.33. Presets multiply the manual Render Scale; neither control overwrites the other.
 - SGSR1 has its own shader and renderer path and does not share the FSR preset scale.
-- These are spatial upscalers, not FSR 2/3 or frame generation.
+- These are spatial upscalers, not FSR 2/3 or frame generation. AMD's FSR 1 documentation describes EASU and RCAS as the two stages of the FSR 1 technique.
 - SGSR1 is an adapted GLSL ES 1.00 spatial shader using explicit texture taps in place of `textureGather`.
 - Runtime image quality, device compatibility, and performance still require physical Android testing. Do not treat SGSR1 as Qualcomm-certified or device-verified.
 
