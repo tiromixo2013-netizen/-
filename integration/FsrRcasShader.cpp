@@ -1,3 +1,4 @@
+#include "../../render/PostProcessRenderer.hpp"
 #include "../PostProcessShaders.hpp"
 
  /*
