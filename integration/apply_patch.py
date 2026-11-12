@@ -40,7 +40,8 @@ sub("""        if (value == "FSR 1") {
             return;
         }
 
-        if (value != "Nearest") {""", """        if (value == "FSR 1") {
+        if (value != "Nearest") {""", """        Mod::get()->setSavedValue<bool>("fsr-preset-enabled", value == "FSR 1");
+        if (value == "FSR 1") {
             g_upscaleMethod.store(UpscaleMethod::Fsr, std::memory_order_relaxed);
             return;
         }
