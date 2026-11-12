@@ -197,7 +197,7 @@ mod_path = Path("mod.json")
 mod = json.loads(mod_path.read_text())
 mod["id"] = "tiromixo2013.bettervisuals-gsr"
 mod["name"] = "BetterVisuals GSR1"
-version = "v2.3.6"
+version = "v2.3.7"
 if not __import__("re").fullmatch(
     r"v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?",
     version,
