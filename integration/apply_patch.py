@@ -218,7 +218,7 @@ mod_path = Path("mod.json")
 mod = json.loads(mod_path.read_text())
 mod["id"] = "tiromixo2013.bettervisuals-gsr"
 mod["name"] = "BetterVisuals GSR1"
-version = "v2.3.8"
+version = "v2.3.9"
 if not __import__("re").fullmatch(
     r"v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?",
     version,
@@ -287,4 +287,4 @@ replace_once(
     gl_FragColor = vec4(pixel, f.a);
 """
 )
-print("Independent FSR1 EASU, FSR1+RCAS, and SGSR1 paths applied.")
+print("Independent FSR1 EASU, FSR1+RCAS, SGSR1, and Lanczos3 paths applied.")
