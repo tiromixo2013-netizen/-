@@ -144,7 +144,6 @@ sub("""                else if (config.upscaling == UpscaleMethod::Fsr) {
                 else {
                     g_renderScaleRenderer.apply(sourceTexture);
                 }""")
-# FSR quality presets multiply with the manual Render Scale; they never overwrite it.
 sub("""    struct PostProcessKey {
         PostProcessConfig config;
         GLsizei width = 0;
@@ -183,8 +182,6 @@ sub("""    bindStringSetting("upscale-method", updateUpscaleMethod);""", """    
     bindStringSetting("fsr-quality-preset", updateFsrQualityPreset);""")
 main.write_text(s)
 
-
-
 shader_header = Path("src/shaders/PostProcessShaders.hpp")
 h = shader_header.read_text()
 old = "    extern render::PostProcessShader const kFsrShader;\n"
@@ -198,12 +195,11 @@ mod["id"] = "tiromixo2013.bettervisuals-gsr"
 mod["name"] = "BetterVisuals GSR1"
 version = "v2.3.8"
 if not __import__("re").fullmatch(
-    r"v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?",
+    r"v\\d+\\.\\d+\\.\\d+(?:-(?:alpha|beta|prerelease|pr)(?:\\.\\d+)?)?",
     version,
 ):
     raise SystemExit(f"Invalid Geode version: {version}")
 mod["version"] = version
-# Target the exact stable Geode loader used by the project device.
 mod["geode"] = "5.11.2"
 mod["developer"] = "tiromixo2013"
 mod.setdefault("links", {})["source"] = "https://github.com/tiromixo2013-netizen/-"
@@ -230,5 +226,38 @@ mod["settings"]["fsr-quality-preset"] = {
 }
 mod_path.write_text(json.dumps(mod, indent=2) + "\n")
 
-# Ensure the renderer is reset if the scene-capture pipeline takes the downsample path.
-print("Independent FSR 1, FSR 1.2 EASU+RCAS, and SGSR1 paths with shared quality presets applied.")
+# Bring the EASU resolve back in line with AMD FsrEasuF: clamp to the nearest
+# 2x2 texels only, and do not blend the EASU result with a separate bilinear pass.
+fsr_shader = Path("src/shaders/upscale/FsrShader.cpp")
+replace_once(
+    fsr_shader,
+    """    vec3 min4 = min(
+        f.rgb,
+        min(b, min(c, min(i, min(j, min(e, min(g, min(h, min(k, min(l, min(n, o))))))))))
+    );
+    vec3 max4 = max(
+        f.rgb,
+        max(b, max(c, max(i, max(j, max(e, max(g, max(h, max(k, max(l, max(n, o))))))))))
+    );
+""",
+    """    // AMD EASU limits ringing to the nearest 2x2 neighbourhood (f, g, j, k).
+    vec3 min4 = min(min(f.rgb, g), min(j, k));
+    vec3 max4 = max(max(f.rgb, g), max(j, k));
+"""
+)
+replace_once(
+    fsr_shader,
+    """    vec3 bilinear = mix(mix(f.rgb, g, pp.x), mix(j, k, pp.x), pp.y);
+
+    vec3 pixel = mix(
+        bilinear,
+        min(max4, max(min4, accumulation * (1.0 / weight))),
+        clamp(u_sharpness, 0.0, 1.0)
+    );
+    gl_FragColor = vec4(pixel, f.a);
+""",
+    """    vec3 pixel = min(max4, max(min4, accumulation * (1.0 / weight)));
+    gl_FragColor = vec4(pixel, f.a);
+"""
+)
+print("Independent FSR1 EASU, FSR1+RCAS, and SGSR1 paths applied.")
