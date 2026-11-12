@@ -1,4 +1,4 @@
-name: Build BetterVisuals GSR1 + FSR RCAS (Android ARM64)
+name: Build BetterVisuals GSR1 + FSR Presets (Android ARM64)
 
 on:
   push:
