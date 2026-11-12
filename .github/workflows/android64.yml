@@ -1,4 +1,4 @@
-name: Build BetterVisuals GSR1 (Android ARM64)
+name: Build BetterVisuals GSR1 + FSR RCAS (Android ARM64)
 
 on:
   push:
@@ -24,10 +24,11 @@ jobs:
         with:
           path: integration
 
-      - name: Apply SGSR1 integration
+      - name: Apply SGSR1 and FSR integration
         run: |
           cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
           cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
+          cp integration/integration/FsrRcasShader.cpp ./src/shaders/upscale/FsrRcasShader.cpp
           python3 ./apply_sgsr1_patch.py
           python3 - <<'PY'
           import json, re
@@ -40,6 +41,7 @@ jobs:
           print(f"Validated Geode metadata: {mod['id']} {version}")
           PY
           test -s src/shaders/Sgsr1Shader.cpp
+          test -s src/shaders/upscale/FsrRcasShader.cpp
 
       - name: Build Android ARM64 Geode mod
         uses: geode-sdk/build-geode-mod@main
