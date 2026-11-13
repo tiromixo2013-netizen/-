@@ -62,7 +62,6 @@ once('''$on_mod(Loaded) {
 '''$on_mod(Loaded) {
     bindBoolSetting("enabled", g_modEnabled);
     bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);
-    registerFrameGenerationBridge();
 ''')
 
 once('''class $modify(BetterVisualsDirectorHook, CCDirector) {
@@ -136,7 +135,7 @@ settings["frame-generation-title"] = {"type": "title", "name": "Frame Generation
 settings["frame-generation-enabled"] = {
     "type": "bool",
     "name": "Enable Frame Generation",
-    "description": "Experimental Android Cocos frame pacing with bidirectional Lucas-Kanade midpoint synthesis. Uses Geode Cocos render hooks; no custom Loader or APK is required. Disabled by default; falls back to normal rendering if the bridge or frame history is unavailable.",
+    "description": "Experimental Android Cocos frame pacing with bidirectional Lucas-Kanade midpoint synthesis. Uses Geode Cocos render hooks; no custom Loader or APK is required. Disabled by default; falls back to normal rendering if capture or frame history is unavailable.",
     "default": False,
     "enable-if": "enabled"
 }
