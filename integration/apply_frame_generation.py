@@ -14,7 +14,7 @@ def once(old, new):
     s = s.replace(old, new, 1)
 
 once('#include "render/BloomRenderer.hpp"\n',
-     '#include "render/BloomRenderer.hpp"\n#include "render/FrameInterpolationRenderer.hpp"\n')
+     '#include "render/BloomRenderer.hpp"\n#include "render/FrameInterpolationRenderer.hpp"\n#include <Geode/utils/addresser.hpp>\n')
 once('#include <chrono>\n',
      '#include <chrono>\n#ifdef GEODE_IS_ANDROID\n#include <Geode/mapping/CCEGLView.hpp>\n#endif\n')
 once('    std::atomic<bool> g_modEnabled = true;\n',
