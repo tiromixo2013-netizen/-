@@ -118,8 +118,19 @@ bool FrameInterpolationRenderer::present(int phase) {
     if ((phase != 0 && phase != 1) || !m_hasHistory || !initialize()) return false;
     unsigned const previousIndex = 1u - m_currentIndex;
     unsigned const currentIndex = m_currentIndex;
+    // The captured game texture can be smaller than the EGL surface (for
+    // example when Render Scale / FSR is active). Never use capture dimensions
+    // as the presentation viewport: that can leave most of the surface stale
+    // or black. Keep the current surface viewport and only fall back to the
+    // capture size if the host has not established one.
+    GLint surfaceViewport[4] = {0, 0, 0, 0};
+    glGetIntegerv(GL_VIEWPORT, surfaceViewport);
+    if (surfaceViewport[2] <= 0 || surfaceViewport[3] <= 0) {
+        return false;
+    }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, m_width, m_height);
+    glViewport(surfaceViewport[0], surfaceViewport[1],
+               surfaceViewport[2], surfaceViewport[3]);
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
