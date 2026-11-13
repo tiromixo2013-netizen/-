@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """Integrate the experimental Lucas-Kanade midpoint interpolation path."""
 from pathlib import Path
-import json, shutil
+import json
 
-root = Path(".")
-integration = Path("integration")
 Path("src/render").mkdir(parents=True, exist_ok=True)
-shutil.copy2(integration / "FrameInterpolationRenderer.hpp", "src/render/FrameInterpolationRenderer.hpp")
-shutil.copy2(integration / "FrameInterpolationRenderer.cpp", "src/render/FrameInterpolationRenderer.cpp")
 
 main = Path("src/main.cpp")
 s = main.read_text()
