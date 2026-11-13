@@ -1,30 +1,26 @@
-# Android Loader Frame Generation bridge (experimental)
+# Android Loader Frame Generation bridge
 
-This patch targets Geode Loader commit `d22af2464ec97ab6c0fbef18004e82f3d2f36713`.
+Target: Geode Loader commit `d22af2464ec97ab6c0fbef18004e82f3d2f36713`.
 
-It adds a Java render-loop phase switch and a narrow native callback ABI without changing Geode's mod manifest, package ID, dependency discovery, or mod-loading code.
+Apply `geode-android-frame-generation.patch` to that Geode source tree. It adds only:
+- a Java render-loop phase bit to `Cocos2dxRenderer`;
+- a JNI entry point used on the GLSurfaceView GL thread;
+- the exported C ABI registration function `GeodeSetFrameGenerationPresentCallback`.
 
-## Callback contract
+It does **not** alter Geode mod IDs, manifests, dependency discovery, package scanning, or the mod-loading pipeline.
 
-The mod exports/registers a function with the C ABI:
+## Runtime contract
 
-```cpp
-using GeodeFrameGenerationPresentCallback = bool (*)(int phase);
-extern "C" void GeodeSetFrameGenerationPresentCallback(
-    GeodeFrameGenerationPresentCallback callback
-);
-```
+The mod registers `bool callback(int phase)` through the exported C ABI.
 
-The callback executes on the GLSurfaceView GL thread while the EGL context is current.
+- Phase 0 runs after one ordinary `nativeRender()`. The mod captures the completed post-processed image during that render, then draws the previous game image. Returning true schedules phase 1 for the next GLSurfaceView callback.
+- Phase 1 draws the optical-flow midpoint between the retained previous/current images. It does not call `nativeRender()`, so game simulation, input, actions, and physics are not advanced a second time.
+- A false return falls back to ordinary game rendering.
 
-- phase 0: after one real `nativeRender()`, draw the delayed previous game frame to the default framebuffer and return true only when a valid delayed source frame was drawn.
-- phase 1: draw the interpolated midpoint between the delayed source and the newest captured game frame. Do not call `CCDirector::mainLoop()`, update actions, physics, input, or game objects.
-- return false on missing history, resize/context loss, scene cut, shader failure, or missed GPU budget. The Java renderer falls back to normal game rendering.
+The Android framework performs its normal EGL buffer presentation after each `onDrawFrame()`. This patch does not call `eglSwapBuffers()` manually.
 
-This creates a one-game-frame presentation delay while the game simulation advances on alternate display callbacks. It is deliberately not enabled by default. A mod must register a callback and implement source-frame capture plus both presentation phases before the Loader will insert frames.
+## Build and verification boundary
 
-## Important status
+This is a source patch, not a prebuilt Loader or APK. The BetterVisuals workflow builds the `.geode` mod and validates that this patch applies cleanly to the pinned Loader source. A separate Android Loader build and APK packaging step is still required to produce an installable paired Loader. Device testing is required to verify refresh cadence, GPU budget, latency, and compatibility.
 
-This is a **Loader source patch**, not a ready-to-install Loader binary. The existing workflow builds only the BetterVisuals `.geode` mod and does not build or package a custom Geode Loader/APK. The patch must be applied to a custom Loader build and tested on a physical Android device before claiming doubled displayed FPS. The current interpolation renderer still needs to be refactored to implement the callback contract; until then, the existing in-mod interpolation option remains a preview/replacement path, not true frame generation.
-
-The patch does not touch `main`, does not replace the Geode mod loader, and does not change `tiromixo2013.bettervisuals-gsr`.
+The mod keeps its existing Geode ID `tiromixo2013.bettervisuals-gsr`; Frame Generation is disabled by default and requires this paired Loader bridge.

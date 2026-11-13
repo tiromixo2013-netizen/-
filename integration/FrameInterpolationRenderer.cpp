@@ -1,5 +1,4 @@
 #include "FrameInterpolationRenderer.hpp"
-#include "FullscreenQuad.hpp"
 #include "ShaderProgram.hpp"
 #include "GlStateGuard.hpp"
 #include <array>
@@ -13,11 +12,7 @@ uniform sampler2D u_previous;
 uniform sampler2D u_current;
 uniform vec2 u_invResolution;
 varying vec2 v_texCoord;
-
 float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
-
-// Iterative 3x3 Lucas-Kanade optical flow. The flow is measured in UV units,
-// clamped to 12 source pixels to avoid unstable warps on cuts and fast edges.
 vec2 estimateFlow(sampler2D fromFrame, sampler2D toFrame, vec2 uv) {
     vec2 flow = vec2(0.0);
     for (int iteration = 0; iteration < 3; ++iteration) {
@@ -46,19 +41,17 @@ vec2 estimateFlow(sampler2D fromFrame, sampler2D toFrame, vec2 uv) {
     }
     return clamp(flow, -12.0 * u_invResolution, 12.0 * u_invResolution);
 }
-
 void main() {
     vec2 uv = v_texCoord;
     vec2 forwardFlow = estimateFlow(u_previous, u_current, uv);
     vec2 backwardFlow = estimateFlow(u_current, u_previous, uv);
-    float consistency = length(forwardFlow + backwardFlow) / max(length(forwardFlow) + length(backwardFlow), 0.00001);
+    float consistency = length(forwardFlow + backwardFlow) /
+        max(length(forwardFlow) + length(backwardFlow), 0.00001);
     vec2 previousUV = clamp(uv - 0.5 * forwardFlow, vec2(0.001), vec2(0.999));
-    vec2 currentUV  = clamp(uv - 0.5 * backwardFlow, vec2(0.001), vec2(0.999));
+    vec2 currentUV = clamp(uv - 0.5 * backwardFlow, vec2(0.001), vec2(0.999));
     vec4 previousColor = texture2D(u_previous, previousUV);
     vec4 currentColor = texture2D(u_current, currentUV);
     float difference = length(previousColor.rgb - currentColor.rgb);
-    // Forward/backward disagreement and large photometric changes indicate
-    // occlusion/disocclusion or a scene cut: favor the current frame there.
     float confidence = (1.0 - smoothstep(0.08, 0.45, consistency)) *
                        (1.0 - smoothstep(0.18, 0.55, difference));
     vec4 warpedAverage = 0.5 * (previousColor + currentColor);
@@ -66,17 +59,17 @@ void main() {
     gl_FragColor = vec4(midpoint.rgb, currentColor.a);
 }
 )glsl";
-}
-bool FrameInterpolationRenderer::initialize() {
-    if (m_program) return true;
-    constexpr char vertex[] = R"glsl(
+constexpr char kVertex[] = R"glsl(
 attribute vec2 a_position; attribute vec2 a_texCoord; varying vec2 v_texCoord;
 void main(){ v_texCoord=a_texCoord; gl_Position=vec4(a_position,0.0,1.0); }
 )glsl";
-    std::array vs{std::string_view(vertex)};
+}
+bool FrameInterpolationRenderer::initialize() {
+    if (m_program) return true;
+    std::array vs{std::string_view(kVertex)};
     std::array fs{std::string_view(kFrameInterpolationFragment)};
-    m_program = compileShaderProgram("Frame Interpolation (Lucas-Kanade)", vs, fs);
-    if (!m_program) return false;
+    m_program = compileShaderProgram("Frame Generation (Lucas-Kanade)", vs, fs);
+    if (!m_program || !m_quad.initialize("frame generation")) return false;
     m_previousUniform = glGetUniformLocation(m_program, "u_previous");
     m_currentUniform = glGetUniformLocation(m_program, "u_current");
     m_inverseResolutionUniform = glGetUniformLocation(m_program, "u_invResolution");
@@ -88,7 +81,8 @@ void main(){ v_texCoord=a_texCoord; gl_Position=vec4(a_position,0.0,1.0); }
     glUniform1i(m_currentUniform, 1);
     return true;
 }
-bool FrameInterpolationRenderer::process(GLuint framebuffer, GLint x, GLint y, GLsizei width, GLsizei height) {
+bool FrameInterpolationRenderer::capture(GLuint framebuffer, GLint x, GLint y,
+                                          GLsizei width, GLsizei height) {
     GlStateGuard state;
     if (width <= 0 || height <= 0 || !initialize()) return false;
     if (width != m_width || height != m_height) {
@@ -96,41 +90,64 @@ bool FrameInterpolationRenderer::process(GLuint framebuffer, GLint x, GLint y, G
         if (!initialize()) return false;
         glGenTextures(2, m_frames.data());
         for (auto texture : m_frames) {
+            if (!texture) { reset(); return false; }
             glBindTexture(GL_TEXTURE_2D, texture);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+                         GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         }
-        m_width = width; m_height = height; m_writeIndex = 0; m_hasHistory = false;
+        m_width = width; m_height = height;
+        m_writeIndex = 0; m_currentIndex = 0;
+        m_hasCurrent = false; m_hasHistory = false;
     }
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_frames[m_writeIndex]);
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, width, height);
-    if (m_hasHistory) {
-        const unsigned previousIndex = 1u - m_writeIndex;
-        glUseProgram(m_program);
-        glUniform2f(m_inverseResolutionUniform, 1.f / width, 1.f / height);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_frames[previousIndex]);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, m_frames[m_writeIndex]);
-        glViewport(x, y, width, height);
-        FullscreenQuad::draw();
-    }
+    m_currentIndex = m_writeIndex;
     m_writeIndex = 1u - m_writeIndex;
-    m_hasHistory = true;
+    if (m_hasCurrent) m_hasHistory = true;
+    m_hasCurrent = true;
     return true;
+}
+bool FrameInterpolationRenderer::present(int phase) {
+    GlStateGuard state;
+    if ((phase != 0 && phase != 1) || !m_hasHistory || !initialize()) return false;
+    unsigned const previousIndex = 1u - m_currentIndex;
+    unsigned const currentIndex = m_currentIndex;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, m_width, m_height);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_CULL_FACE);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glUseProgram(m_program);
+    glUniform2f(m_inverseResolutionUniform, 1.f / m_width, 1.f / m_height);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_frames[previousIndex]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, phase == 0 ? m_frames[previousIndex] : m_frames[currentIndex]);
+    m_quad.bind();
+    FullscreenQuad::draw();
+    return glGetError() == GL_NO_ERROR;
 }
 void FrameInterpolationRenderer::destroy() {
     if (m_program) glDeleteProgram(m_program);
-    m_program = 0; m_previousUniform = m_currentUniform = m_inverseResolutionUniform = -1;
+    m_program = 0;
+    m_previousUniform = m_currentUniform = m_inverseResolutionUniform = -1;
+    m_quad.reset();
 }
 void FrameInterpolationRenderer::reset() {
     if (m_frames[0] || m_frames[1]) glDeleteTextures(2, m_frames.data());
-    m_frames = {}; m_width = m_height = 0; m_writeIndex = 0; m_hasHistory = false;
+    m_frames = {};
+    m_width = m_height = 0;
+    m_writeIndex = m_currentIndex = 0;
+    m_hasCurrent = m_hasHistory = false;
     destroy();
 }
 }

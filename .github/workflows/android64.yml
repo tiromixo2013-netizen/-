@@ -1,16 +1,13 @@
-name: Build BetterVisuals GSR1 + FSR 1 + Frame Interpolation (Android ARM64)
-
+name: Build BetterVisuals GSR1 + FSR 1 + Frame Generation (Android ARM64)
 on:
   push:
     branches: [main, feature/frame-generation-prototype]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   build:
-    name: Android64 Geode build
+    name: Android64 Geode mod build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout BetterVisuals upstream
@@ -18,18 +15,20 @@ jobs:
         with:
           repository: ItMe12s/BetterVisuals
           ref: master
-
       - name: Checkout integration overlay
         uses: actions/checkout@v4
         with:
           path: integration
-      - name: Validate custom Geode Android frame-presentation patch
+      - name: Apply and validate custom Geode Android Loader bridge
         run: |
           git clone --filter=blob:none https://github.com/geode-sdk/geode.git /tmp/geode-loader
           git -C /tmp/geode-loader checkout d22af2464ec97ab6c0fbef18004e82f3d2f36713
           git -C /tmp/geode-loader apply --check "$GITHUB_WORKSPACE/integration/loader-patch/geode-android-frame-generation.patch"
-
-      - name: Apply SGSR1, FSR 1, and Frame Interpolation integration
+          git -C /tmp/geode-loader apply "$GITHUB_WORKSPACE/integration/loader-patch/geode-android-frame-generation.patch"
+          git -C /tmp/geode-loader diff --check
+          grep -q "nativePresentGeneratedFrame" /tmp/geode-loader/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
+          grep -q "GeodeSetFrameGenerationPresentCallback" /tmp/geode-loader/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
+      - name: Apply SGSR1, FSR 1, and Frame Generation integration
         run: |
           cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
           cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
@@ -46,25 +45,24 @@ jobs:
           assert isinstance(version, str), 'mod.json version must be a string'
           assert re.fullmatch(r'v\d+\.\d+\.\d+(?:-(?:alpha|beta|prerelease|pr)(?:\.\d+)?)?', version), f'Invalid Geode version: {version!r}'
           assert mod.get('id') == 'tiromixo2013.bettervisuals-gsr'
-          print(f"Validated Geode metadata: {mod['id']} {version}")
+          assert mod['settings']['frame-generation-enabled']['default'] is False
+          print(f"Validated Geode metadata and Frame Generation setting: {mod['id']} {version}")
           PY
           test -s src/shaders/Sgsr1Shader.cpp
-
+          test -s src/render/FrameInterpolationRenderer.cpp
       - name: Build Android ARM64 Geode mod
         uses: geode-sdk/build-geode-mod@main
         with:
           combine: true
           target: Android64
-
   package:
-    name: Package Android64 Geode build
+    name: Package Android64 Geode mod
     runs-on: ubuntu-latest
     needs: [build]
     steps:
       - name: Combine Geode build
         uses: geode-sdk/build-geode-mod/combine@main
         id: build
-
       - name: Fix packaged Geode compatibility metadata
         env:
           BUILD_OUTPUT: ${{ steps.build.outputs.build-output }}
@@ -96,7 +94,6 @@ jobs:
                   mod = json.loads(data.decode("utf-8"))
                   if mod.get("id") != "tiromixo2013.bettervisuals-gsr":
                       raise SystemExit(f"Unexpected mod id: {mod.get('id')!r}")
-                  # Preserve the proven package metadata format from the earlier build.
                   mod["geode"] = "v5.11.2"
                   data = (json.dumps(mod, indent=2) + "\n").encode("utf-8")
               updated.append((info, data))
@@ -118,11 +115,10 @@ jobs:
                   os.unlink(temp_name)
           print(f"Patched and validated {package}: geode={mod['geode']}, id={mod['id']}")
           PY
-
       - name: Upload Geode package
         uses: actions/upload-artifact@v4
         with:
-          name: BetterVisuals-FSR1-SGSR1-FrameInterpolation-Android64
+          name: BetterVisuals-FSR1-SGSR1-FrameGeneration-Android64
           path: ${{ steps.build.outputs.build-output }}
           if-no-files-found: error
           retention-days: 14

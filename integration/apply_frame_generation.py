@@ -1,47 +1,41 @@
 #!/usr/bin/env python3
-"""Integrate the experimental Lucas-Kanade midpoint interpolation path."""
+"""Wire optical-flow frame generation to the custom Geode Android Loader bridge."""
 from pathlib import Path
 import json
 
-Path("src/render").mkdir(parents=True, exist_ok=True)
-
 main = Path("src/main.cpp")
 s = main.read_text()
+
 def once(old, new):
     global s
-    n = s.count(old)
-    if n != 1:
-        raise SystemExit(f"Frame Generation patch point count {n}, expected 1: {old[:100]!r}")
+    count = s.count(old)
+    if count != 1:
+        raise SystemExit(f"Frame Generation patch point count {count}, expected 1: {old[:100]!r}")
     s = s.replace(old, new, 1)
 
 once('#include "render/BloomRenderer.hpp"\n',
      '#include "render/BloomRenderer.hpp"\n#include "render/FrameInterpolationRenderer.hpp"\n')
+once('#include <chrono>\n',
+     '#include <chrono>\n#ifdef GEODE_IS_ANDROID\n#include <dlfcn.h>\n#endif\n')
 once('    std::atomic<bool> g_modEnabled = true;\n',
      '    std::atomic<bool> g_modEnabled = true;\n    std::atomic<bool> g_frameGenerationEnabled = false;\n')
 once('    bv::render::BloomRenderer g_bloomRenderer;\n',
      '    bv::render::BloomRenderer g_bloomRenderer;\n    bv::render::FrameInterpolationRenderer g_frameInterpolationRenderer;\n')
-once('''        g_crtRenderer.reset();
-        g_smaaRenderer.reset();
-''',
-'''        g_crtRenderer.reset();
-        g_smaaRenderer.reset();
-        g_frameInterpolationRenderer.reset();
-''')
-once('    bindBoolSetting("enabled", g_modEnabled);\n',
-     '    bindBoolSetting("enabled", g_modEnabled);\n    bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);\n')
+once('        g_crtRenderer.reset();\n        g_smaaRenderer.reset();\n',
+     '        g_crtRenderer.reset();\n        g_smaaRenderer.reset();\n        g_frameInterpolationRenderer.reset();\n')
 once('''        auto const needsPresentation = internalWidth != width || internalHeight != height;
 ''',
 '''        auto const frameGeneration = g_frameGenerationEnabled.load(std::memory_order_relaxed);
         auto const needsPresentation = internalWidth != width || internalHeight != height || frameGeneration;
 ''')
-once('''        glBindFramebuffer(GL_FRAMEBUFFER, callerTarget.framebuffer);
-        glViewport(callerTarget.x, callerTarget.y, callerTarget.width, callerTarget.height);
-        g_failedPostProcessKey.reset();
+once('''        g_failedPostProcessKey.reset();
+    }
+
+} // namespace
 ''',
-'''        glBindFramebuffer(GL_FRAMEBUFFER, callerTarget.framebuffer);
-        glViewport(callerTarget.x, callerTarget.y, callerTarget.width, callerTarget.height);
+'''        g_failedPostProcessKey.reset();
         if (g_frameGenerationEnabled.load(std::memory_order_relaxed)) {
-            if (!g_frameInterpolationRenderer.process(
+            if (!g_frameInterpolationRenderer.capture(
                     callerTarget.framebuffer, callerTarget.x, callerTarget.y,
                     callerTarget.width, callerTarget.height)) {
                 g_frameInterpolationRenderer.reset();
@@ -50,21 +44,56 @@ once('''        glBindFramebuffer(GL_FRAMEBUFFER, callerTarget.framebuffer);
         else {
             g_frameInterpolationRenderer.reset();
         }
-        g_failedPostProcessKey.reset();
+    }
+
+    bool presentGeneratedFrame(int phase) {
+        if (!g_frameGenerationEnabled.load(std::memory_order_relaxed) ||
+            !g_modEnabled.load(std::memory_order_relaxed) ||
+            g_temporarilyDisabled.load(std::memory_order_relaxed)) {
+            return false;
+        }
+        return g_frameInterpolationRenderer.present(phase);
+    }
+
+    void registerFrameGenerationBridge() {
+#ifdef GEODE_IS_ANDROID
+        using RegisterCallback = void (*)(bool (*)(int));
+        auto const registerCallback = reinterpret_cast<RegisterCallback>(
+            dlsym(RTLD_DEFAULT, "GeodeSetFrameGenerationPresentCallback")
+        );
+        if (registerCallback) {
+            registerCallback(&presentGeneratedFrame);
+            log::info("Registered Android Loader Frame Generation bridge");
+        }
+        else {
+            log::warn("Custom Geode Loader Frame Generation bridge not found; generation is unavailable");
+        }
+#endif
+    }
+
+} // namespace
 ''')
+once('''$on_mod(Loaded) {
+    bindBoolSetting("enabled", g_modEnabled);
+''',
+'''$on_mod(Loaded) {
+    bindBoolSetting("enabled", g_modEnabled);
+    bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);
+    registerFrameGenerationBridge();
+''')
+
 main.write_text(s)
 
 manifest = Path("mod.json")
 mod = json.loads(manifest.read_text())
-mod["settings"]["frame-generation-title"] = {
-    "type": "title", "name": "Frame Generation (Experimental)"
-}
-mod["settings"]["frame-generation-enabled"] = {
+settings = mod.setdefault("settings", {})
+settings["frame-generation-title"] = {"type": "title", "name": "Frame Generation"}
+settings["frame-generation-enabled"] = {
     "type": "bool",
-    "name": "Enable Frame Interpolation",
-    "description": "Experimental Lucas-Kanade motion estimation and midpoint reconstruction. This replaces the current output with a synthesized midpoint; it does not insert an independently presented display refresh or guarantee higher FPS.",
+    "name": "Enable Frame Generation",
+    "description": "Experimental Android Loader frame pacing with bidirectional Lucas-Kanade midpoint synthesis. Requires the matching custom Geode Loader bridge. Disabled by default; falls back to normal rendering if the bridge or frame history is unavailable.",
     "default": False,
     "enable-if": "enabled"
 }
 manifest.write_text(json.dumps(mod, indent=2) + "\n")
-print("Experimental Frame Interpolation integrated (disabled by default).")
+print("Frame Generation setting and Loader callback integration applied.")

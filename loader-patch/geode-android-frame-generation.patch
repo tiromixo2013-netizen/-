@@ -1,47 +1,39 @@
 diff --git a/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java b/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
 --- a/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
 +++ b/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
-@@ -35,3 +35,6 @@
+@@ -45,3 +45,4 @@
  	private long mLastTickInNanoSeconds;
  	private int mScreenWidth;
  	private int mScreenHeight;
-+	// 0 = advance the game and optionally show its delayed source frame.
-+	// 1 = show the generated midpoint without advancing game simulation.
 +	private int mFrameGenerationPhase = 0;
-@@ -77,1 +80,17 @@
+@@ -92,3 +93,15 @@
+ 		// should render a frame when onDrawFrame() is called or there is a
+ 		// "ghost"
 -		Cocos2dxRenderer.nativeRender();
 +		if (this.mFrameGenerationPhase == 0) {
-+			// Advance Geometry Dash exactly once.
 +			Cocos2dxRenderer.nativeRender();
 +			if (Cocos2dxRenderer.nativePresentGeneratedFrame(0)) {
 +				this.mFrameGenerationPhase = 1;
 +			}
 +		} else {
-+			// This callback must only draw an interpolated image. It must never
-+			// tick CCDirector, actions, physics, input, or game objects.
 +			if (Cocos2dxRenderer.nativePresentGeneratedFrame(1)) {
 +				this.mFrameGenerationPhase = 0;
 +			} else {
-+				// Safe fallback if generation misses its deadline or loses history.
 +				Cocos2dxRenderer.nativeRender();
 +				this.mFrameGenerationPhase = 0;
 +			}
 +		}
-@@ -120,1 +136,2 @@
+@@ -119,1 +132,2 @@
  	private static native void nativeRender();
 +	private static native boolean nativePresentGeneratedFrame(final int pPhase);
 diff --git a/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp b/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
 --- a/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
 +++ b/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
-@@ -6,7 +6,27 @@
- #include "JniHelper.h"
+@@ -8,1 +8,2 @@
  #include <jni.h>
 +#include <atomic>
- 
- using namespace cocos2d;
- 
+@@ -12,3 +13,20 @@
  extern "C" {
-+    // Narrow C ABI: mod identity and Geode mod discovery remain unchanged.
 +    using GeodeFrameGenerationPresentCallback = bool (*)(int phase);
 +    static std::atomic<GeodeFrameGenerationPresentCallback> s_frameGenerationCallback{nullptr};
 +
