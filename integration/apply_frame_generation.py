@@ -16,7 +16,7 @@ def once(old, new):
 once('#include "render/BloomRenderer.hpp"\n',
      '#include "render/BloomRenderer.hpp"\n#include "render/FrameInterpolationRenderer.hpp"\n')
 once('#include <chrono>\n',
-     '#include <chrono>\n#ifdef GEODE_IS_ANDROID\n#include <dlfcn.h>\n#endif\n')
+     '#include <chrono>\n#ifdef GEODE_IS_ANDROID\n#include <Geode/mapping/CCEGLView.hpp>\n#endif\n')
 once('    std::atomic<bool> g_modEnabled = true;\n',
      '    std::atomic<bool> g_modEnabled = true;\n    std::atomic<bool> g_frameGenerationEnabled = false;\n')
 once('    bv::render::BloomRenderer g_bloomRenderer;\n',
@@ -34,41 +34,24 @@ once('''        g_failedPostProcessKey.reset();
 } // namespace
 ''',
 '''        g_failedPostProcessKey.reset();
-        if (g_frameGenerationEnabled.load(std::memory_order_relaxed)) {
-            if (!g_frameInterpolationRenderer.capture(
-                    callerTarget.framebuffer, callerTarget.x, callerTarget.y,
-                    callerTarget.width, callerTarget.height)) {
+        if (g_frameGenerationEnabled.load(std::memory_order_relaxed) &&
+            g_modEnabled.load(std::memory_order_relaxed) &&
+            !g_temporarilyDisabled.load(std::memory_order_relaxed)) {
+            auto const captured = g_frameInterpolationRenderer.capture(
+                callerTarget.framebuffer, callerTarget.x, callerTarget.y,
+                callerTarget.width, callerTarget.height
+            );
+            g_frameGenerationCaptureReady.store(captured, std::memory_order_relaxed);
+            if (!captured) {
+                g_frameGenerationShowSource.store(false, std::memory_order_relaxed);
                 g_frameInterpolationRenderer.reset();
             }
         }
         else {
+            g_frameGenerationCaptureReady.store(false, std::memory_order_relaxed);
+            g_frameGenerationShowSource.store(false, std::memory_order_relaxed);
             g_frameInterpolationRenderer.reset();
         }
-    }
-
-    bool presentGeneratedFrame(int phase) {
-        if (!g_frameGenerationEnabled.load(std::memory_order_relaxed) ||
-            !g_modEnabled.load(std::memory_order_relaxed) ||
-            g_temporarilyDisabled.load(std::memory_order_relaxed)) {
-            return false;
-        }
-        return g_frameInterpolationRenderer.present(phase);
-    }
-
-    void registerFrameGenerationBridge() {
-#ifdef GEODE_IS_ANDROID
-        using RegisterCallback = void (*)(bool (*)(int));
-        auto const registerCallback = reinterpret_cast<RegisterCallback>(
-            dlsym(RTLD_DEFAULT, "GeodeSetFrameGenerationPresentCallback")
-        );
-        if (registerCallback) {
-            registerCallback(&presentGeneratedFrame);
-            log::info("Registered Android Loader Frame Generation bridge");
-        }
-        else {
-            log::warn("Custom Geode Loader Frame Generation bridge not found; generation is unavailable");
-        }
-#endif
     }
 
 } // namespace
@@ -82,6 +65,68 @@ once('''$on_mod(Loaded) {
     registerFrameGenerationBridge();
 ''')
 
+once('''class $modify(BetterVisualsDirectorHook, CCDirector) {
+    void setProjection(ccDirectorProjection kProjection) {
+        CCDirector::setProjection(kProjection);
+        applyCaptureViewport();
+    }
+
+    void setViewport() {
+        CCDirector::setViewport();
+        applyCaptureViewport();
+    }
+};''',
+'''class $modify(BetterVisualsDirectorHook, CCDirector) {
+    void setProjection(ccDirectorProjection kProjection) {
+        CCDirector::setProjection(kProjection);
+        applyCaptureViewport();
+    }
+
+    void setViewport() {
+        CCDirector::setViewport();
+        applyCaptureViewport();
+    }
+
+#ifdef GEODE_IS_ANDROID
+    void drawScene() {
+        if (!g_frameGenerationEnabled.load(std::memory_order_relaxed) ||
+            !g_modEnabled.load(std::memory_order_relaxed) ||
+            g_temporarilyDisabled.load(std::memory_order_relaxed)) {
+            g_frameGenerationShowSource.store(false, std::memory_order_relaxed);
+            CCDirector::drawScene();
+            return;
+        }
+        if (g_frameGenerationShowSource.exchange(false, std::memory_order_relaxed)) {
+            if (g_frameInterpolationRenderer.presentCurrent()) {
+                if (auto view = cocos2d::CCEGLView::sharedOpenGLView()) {
+                    g_frameGenerationManualSwap.store(true, std::memory_order_relaxed);
+                    view->swapBuffers();
+                    g_frameGenerationManualSwap.store(false, std::memory_order_relaxed);
+                    return;
+                }
+            }
+        }
+        CCDirector::drawScene();
+    }
+#endif
+};
+
+#ifdef GEODE_IS_ANDROID
+class $modify(BetterVisualsFrameGenerationSwapHook, cocos2d::CCEGLView) {
+    void swapBuffers() {
+        if (!g_frameGenerationManualSwap.load(std::memory_order_relaxed) &&
+            g_frameGenerationEnabled.load(std::memory_order_relaxed) &&
+            g_modEnabled.load(std::memory_order_relaxed) &&
+            !g_temporarilyDisabled.load(std::memory_order_relaxed) &&
+            g_frameGenerationCaptureReady.exchange(false, std::memory_order_relaxed)) {
+            if (g_frameInterpolationRenderer.present(1)) {
+                g_frameGenerationShowSource.store(true, std::memory_order_relaxed);
+            }
+        }
+        cocos2d::CCEGLView::swapBuffers();
+    }
+};
+#endif''');
 main.write_text(s)
 
 manifest = Path("mod.json")
@@ -91,7 +136,7 @@ settings["frame-generation-title"] = {"type": "title", "name": "Frame Generation
 settings["frame-generation-enabled"] = {
     "type": "bool",
     "name": "Enable Frame Generation",
-    "description": "Experimental Android Loader frame pacing with bidirectional Lucas-Kanade midpoint synthesis. Requires the matching custom Geode Loader bridge. Disabled by default; falls back to normal rendering if the bridge or frame history is unavailable.",
+    "description": "Experimental Android Cocos frame pacing with bidirectional Lucas-Kanade midpoint synthesis. Uses Geode Cocos render hooks; no custom Loader or APK is required. Disabled by default; falls back to normal rendering if the bridge or frame history is unavailable.",
     "default": False,
     "enable-if": "enabled"
 }
