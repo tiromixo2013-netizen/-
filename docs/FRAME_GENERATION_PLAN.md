@@ -2,7 +2,7 @@
 
 ## Scope and compatibility contract
 
-This branch adds Frame Generation to the BetterVisuals GSR1 integration overlay. It must not replace or rewrite the existing BetterVisuals, FSR 1, FSR 1.2, or SGSR1 paths.
+This branch adds Frame Generation to the BetterVisuals GSR1 integration overlay. It must not replace or rewrite the existing BetterVisuals, FSR 1, or SGSR1 paths.
 
 Frame Generation is opt-in and defaults to off. When off, the mod must not allocate frame-generation textures, run motion estimation, add render passes, or change presentation timing. If any prerequisite fails while enabled, rendering must fall back to the original BetterVisuals path for that frame (and disable the experimental path after repeated failures).
 
