@@ -18,7 +18,7 @@ once('#include "render/BloomRenderer.hpp"\n',
 once('#include <chrono>\n',
      '#include <chrono>\n#ifdef GEODE_IS_ANDROID\n#include <Geode/mapping/CCEGLView.hpp>\n#endif\n')
 once('    std::atomic<bool> g_modEnabled = true;\n',
-     '    std::atomic<bool> g_modEnabled = true;\n    std::atomic<bool> g_frameGenerationEnabled = false;\n')
+     '    std::atomic<bool> g_modEnabled = true;\n    std::atomic<bool> g_frameGenerationEnabled = false;\n    std::atomic<bool> g_frameGenerationCaptureReady = false;\n    std::atomic<bool> g_frameGenerationShowSource = false;\n    std::atomic<bool> g_frameGenerationManualSwap = false;\n')
 once('    bv::render::BloomRenderer g_bloomRenderer;\n',
      '    bv::render::BloomRenderer g_bloomRenderer;\n    bv::render::FrameInterpolationRenderer g_frameInterpolationRenderer;\n')
 once('        g_crtRenderer.reset();\n        g_smaaRenderer.reset();\n',
