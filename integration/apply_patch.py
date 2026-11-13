@@ -124,7 +124,8 @@ sub("""    struct PostProcessKey {
         GLsizei outputWidth = 0;
         GLsizei outputHeight = 0;""")
 sub("""            config, internalWidth, internalHeight, needsPresentation, needsDownsample
-        };""", """            config, internalWidth, internalHeight, needsPresentation, needsDownsample
+        };""", """            config, internalWidth, internalHeight, width, height,
+            needsPresentation, needsDownsample
         };""")
 sub("""    std::atomic<float> g_renderScale = 1.f;""", """    std::atomic<float> g_renderScale = 1.f;
     std::atomic<float> g_fsrPresetScale = 0.67f;""")
