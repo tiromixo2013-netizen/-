@@ -141,4 +141,4 @@ settings["frame-generation-enabled"] = {
     "enable-if": "enabled"
 }
 manifest.write_text(json.dumps(mod, indent=2) + "\n")
-print("Frame Generation setting and Loader callback integration applied.")
+print("Frame Generation setting and Geode Cocos render-hook integration applied.")
