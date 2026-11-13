@@ -1,5 +1,6 @@
 #pragma once
 #include <Geode/cocos/platform/CCGL.h>
+#include <array>
 
 namespace bv::render {
 class FrameInterpolationRenderer final {
