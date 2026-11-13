@@ -1,29 +1,31 @@
 # Frame Generation integration status
 
-## Compatibility contract
-- Preserve BetterVisuals, FSR 1, SGSR1, the existing Geode mod ID, and normal Geode mod discovery.
-- Frame Generation remains opt-in and defaults to off.
-- If the custom Loader bridge is missing or the renderer cannot produce valid history, use normal rendering.
+## Target contract
+- One ordinary `.geode` package; no custom Loader, replacement APK, root, or companion app.
+- Preserve the BetterVisuals mod ID and the independent FSR1 and SGSR1 paths.
+- Frame Generation is opt-in and disabled by default.
 - Never advance Geometry Dash simulation on a generated-frame callback.
+- Any capture, GL, shader, or context failure must fall back to normal rendering.
 
-## Implemented in this branch
-1. The mod captures the final post-processed output into two GPU textures.
-2. The existing bidirectional Lucas–Kanade shader synthesizes a temporal midpoint from the previous/current captures.
-3. The mod registers a GL-thread callback with the custom Loader bridge using the exported `GeodeSetFrameGenerationPresentCallback` symbol.
-4. The Loader's Java render loop advances the game on phase 0, presents the delayed source image, and on the next display callback presents the generated midpoint without calling `nativeRender()`.
-5. If history, bridge registration, or rendering is unavailable, the Loader falls back to ordinary `nativeRender()`.
-6. The setting `Enable Frame Generation` is exposed in the mod settings and is off by default.
+## Geode-only implementation
 
-## Important limitations
-- The patch changes the Android Geode Loader source. A regular `.geode` package alone cannot activate the Java/JNI bridge.
-- The current workflow checks that the Loader patch applies and builds the mod package; it does not yet build and package a custom Loader/APK.
-- The callback uses `dlsym(RTLD_DEFAULT, ...)`; runtime symbol visibility must be confirmed in the paired Android Loader build.
-- The midpoint shader is a lightweight heuristic Lucas–Kanade implementation. It does not have complete disocclusion reconstruction or HUD/text masks; HUD ghosting and artifacts are possible.
-- Actual 2x displayed cadence is not guaranteed on every refresh rate/device. The game simulation is intentionally advanced once per two display callbacks only while the callback succeeds. GPU deadline misses and physical-device timing need measurement.
+The Android integration now targets two Cocos render boundaries exposed to Geode hooks:
 
-## Acceptance tests still required
-- Build the custom Android64 Geode Loader and package it with the matching Geometry Dash Android host.
-- Install the paired Loader and mod on a physical device.
-- Confirm the mod is still discovered under `tiromixo2013.bettervisuals-gsr`.
-- Measure presented refreshes, simulation tick cadence, GPU time, missed callbacks, input latency, pause/menu transitions, and context loss.
-- Verify OFF exactly preserves normal rendering and ON safely falls back when the bridge is unavailable.
+1. `CCDirector::drawScene` controls whether a callback advances the game scene or presents a retained source frame.
+2. `CCEGLView::swapBuffers` replaces a captured real frame with the optical-flow midpoint at the end of a normal render.
+3. A later draw callback presents the retained current source frame without running the scene update a second time.
+4. The post-process capture is forced while Frame Generation is enabled so the frame history is sourced from the completed output image.
+
+This replaces the previous custom Loader callback design. The old `loader-patch` files are legacy reference material and are not part of the Android64 workflow.
+
+## Verification boundary
+
+A successful Android64 build proves that the C++ code compiles and packages; it does not prove that the game actually presents both frames. Physical-device tests are still required for:
+- hook execution order and source/midpoint/source cadence,
+- 60/90 Hz pacing and missed deadlines,
+- optical-flow artifacts and HUD ghosting,
+- input latency and simulation correctness,
+- menus, pause, background/resume, GL context recreation,
+- coexistence with other mods that hook Cocos rendering.
+
+Do not advertise doubled FPS until these tests pass on-device.
