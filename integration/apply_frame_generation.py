@@ -20,8 +20,13 @@ once('    std::atomic<bool> g_modEnabled = true;\n',
      '    std::atomic<bool> g_modEnabled = true;\n    std::atomic<bool> g_frameGenerationEnabled = false;\n')
 once('    bv::render::BloomRenderer g_bloomRenderer;\n',
      '    bv::render::BloomRenderer g_bloomRenderer;\n    bv::render::FrameInterpolationRenderer g_frameInterpolationRenderer;\n')
-once('        g_bloomRenderer.reset();\n',
-     '        g_bloomRenderer.reset();\n        g_frameInterpolationRenderer.reset();\n')
+once('''        g_crtRenderer.reset();
+        g_smaaRenderer.reset();
+''',
+'''        g_crtRenderer.reset();
+        g_smaaRenderer.reset();
+        g_frameInterpolationRenderer.reset();
+''')
 once('    bindBoolSetting("enabled", g_modEnabled);\n',
      '    bindBoolSetting("enabled", g_modEnabled);\n    bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);\n')
 once('''        auto const needsPresentation = internalWidth != width || internalHeight != height;
