@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wire optical-flow frame generation to the custom Geode Android Loader bridge."""
+"""Wire optical-flow frame generation into Geode Cocos render hooks."""
 from pathlib import Path
 import json
 
