@@ -20,7 +20,6 @@ The patch validates the Geode version string against the version tags supported 
 - FSR 1 retains the upstream EASU spatial upscaling path.
 - SGSR1 is exposed as a separate upscale option and uses BetterVisuals' existing post-process renderer.
 - FSR 1 quality presets multiply the manual Render Scale and apply only when FSR 1 is selected.
-- FSR 1.2 / RCAS has been removed from the source patch, build workflow, settings, and packaged build inputs.
 - These are spatial upscalers, not FSR 2/3 or frame generation.
 - SGSR1 is an adapted GLSL ES 1.00 spatial shader using explicit texture taps in place of `textureGather`.
 - Runtime image quality, device compatibility, and performance still require physical Android testing. Do not treat SGSR1 as Qualcomm-certified or device-verified.
