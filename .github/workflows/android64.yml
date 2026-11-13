@@ -23,6 +23,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: integration
+      - name: Validate custom Geode Android frame-presentation patch
+        run: |
+          git clone --filter=blob:none https://github.com/geode-sdk/geode.git /tmp/geode-loader
+          git -C /tmp/geode-loader checkout d22af2464ec97ab6c0fbef18004e82f3d2f36713
+          git -C /tmp/geode-loader apply --check "$GITHUB_WORKSPACE/integration/loader-patch/geode-android-frame-generation.patch"
 
       - name: Apply SGSR1, FSR 1, and Frame Interpolation integration
         run: |

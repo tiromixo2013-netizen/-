@@ -1,0 +1,70 @@
+diff --git a/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java b/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
+index 0000000..0000000 100644
+--- a/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
++++ b/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
+@@ -35,6 +35,11 @@ public class Cocos2dxRenderer implements GLSurfaceView.Renderer {
+ 	private long mLastTickInNanoSeconds;
+ 	private int mScreenWidth;
+ 	private int mScreenHeight;
++	// 0 = run the game and optionally present its delayed source frame;
++	// 1 = present the generated midpoint without advancing game simulation.
++	private int mFrameGenerationPhase = 0;
+@@ -77,7 +82,19 @@ public class Cocos2dxRenderer implements GLSurfaceView.Renderer {
+-		Cocos2dxRenderer.nativeRender();
++		if (this.mFrameGenerationPhase == 0) {
++			// Advance Geometry Dash exactly once. A registered mod callback may
++			// replace the just-rendered image with its one-frame-delayed source.
++			Cocos2dxRenderer.nativeRender();
++			if (Cocos2dxRenderer.nativePresentGeneratedFrame(0)) {
++				this.mFrameGenerationPhase = 1;
++			}
++		} else {
++			// This callback must only draw an interpolated image. It must never
++			// tick CCDirector, actions, physics, input, or game objects.
++			if (Cocos2dxRenderer.nativePresentGeneratedFrame(1)) {
++				this.mFrameGenerationPhase = 0;
++			} else {
++				// Safe fallback: resume ordinary game rendering if generation
++				// misses its deadline or loses its source history.
++				Cocos2dxRenderer.nativeRender();
++				this.mFrameGenerationPhase = 0;
++			}
++		}
+@@
+ 	private static native void nativeRender();
++	private static native boolean nativePresentGeneratedFrame(final int pPhase);
+diff --git a/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp b/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
+index 0000000..0000000 100644
+--- a/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
++++ b/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
+@@ -6,9 +6,28 @@
+ #include "JniHelper.h"
+ #include <jni.h>
++#include <atomic>
+ 
+ using namespace cocos2d;
+ 
+ extern "C" {
++    // A Geode mod registers a GL-thread callback at runtime. Keeping this as a
++    // narrow C ABI avoids changing mod.json identity or Geode's mod discovery.
++    using GeodeFrameGenerationPresentCallback = bool (*)(int phase);
++    static std::atomic<GeodeFrameGenerationPresentCallback> s_frameGenerationCallback{nullptr};
++
++    __attribute__((visibility("default")))
++    void GeodeSetFrameGenerationPresentCallback(GeodeFrameGenerationPresentCallback callback) {
++        s_frameGenerationCallback.store(callback, std::memory_order_release);
++    }
++
++    JNIEXPORT jboolean JNICALL Java_org_cocos2dx_lib_Cocos2dxRenderer_nativePresentGeneratedFrame(
++        JNIEnv*, jclass, jint phase
++    ) {
++        auto callback = s_frameGenerationCallback.load(std::memory_order_acquire);
++        if (!callback || (phase != 0 && phase != 1)) {
++            return JNI_FALSE;
++        }
++        return callback(static_cast<int>(phase)) ? JNI_TRUE : JNI_FALSE;
++    }
++
+     JNIEXPORT void JNICALL Java_org_cocos2dx_lib_Cocos2dxRenderer_nativeRender(JNIEnv* env) {
+         cocos2d::CCDirector::sharedDirector()->mainLoop();
+     }
