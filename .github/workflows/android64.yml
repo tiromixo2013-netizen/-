@@ -23,8 +23,7 @@ jobs:
         run: |
           git clone --filter=blob:none https://github.com/geode-sdk/geode.git /tmp/geode-loader
           git -C /tmp/geode-loader checkout d22af2464ec97ab6c0fbef18004e82f3d2f36713
-          git -C /tmp/geode-loader apply --check "$GITHUB_WORKSPACE/integration/loader-patch/geode-android-frame-generation.patch"
-          git -C /tmp/geode-loader apply "$GITHUB_WORKSPACE/integration/loader-patch/geode-android-frame-generation.patch"
+          python3 "$GITHUB_WORKSPACE/integration/loader-patch/apply_loader_patch.py" /tmp/geode-loader
           git -C /tmp/geode-loader diff --check
           grep -q "nativePresentGeneratedFrame" /tmp/geode-loader/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
           grep -q "GeodeSetFrameGenerationPresentCallback" /tmp/geode-loader/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
