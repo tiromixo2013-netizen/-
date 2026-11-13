@@ -59,10 +59,10 @@ void main() {
     float difference = length(previousColor.rgb - currentColor.rgb);
     // Forward/backward disagreement and large photometric changes indicate
     // occlusion/disocclusion or a scene cut: favor the current frame there.
-    float confidence = smoothstep(0.45, 0.08, consistency) *
+    float confidence = (1.0 - smoothstep(0.08, 0.45, consistency)) *
                        (1.0 - smoothstep(0.18, 0.55, difference));
-    vec4 midpoint = mix(0.5 * (previousColor + currentColor), 
-                        0.5 * (previousColor + currentColor), confidence);
+    vec4 warpedAverage = 0.5 * (previousColor + currentColor);
+    vec4 midpoint = mix(currentColor, warpedAverage, confidence);
     gl_FragColor = vec4(midpoint.rgb, currentColor.a);
 }
 )glsl";
