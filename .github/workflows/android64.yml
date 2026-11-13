@@ -2,7 +2,7 @@ name: Build BetterVisuals GSR1 + FSR 1 and 1.2 (Android ARM64)
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/frame-generation-prototype]
   workflow_dispatch:
 
 permissions:
