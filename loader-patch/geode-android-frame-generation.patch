@@ -32,7 +32,7 @@ diff --git a/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_l
 @@ -8,1 +8,2 @@
  #include <jni.h>
 +#include <atomic>
-@@ -12,3 +13,20 @@
+@@ -12,3 +13,21 @@
  extern "C" {
 +    using GeodeFrameGenerationPresentCallback = bool (*)(int phase);
 +    static std::atomic<GeodeFrameGenerationPresentCallback> s_frameGenerationCallback{nullptr};
