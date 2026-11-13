@@ -10,7 +10,7 @@ Frame Generation is opt-in and defaults to off. When off, the mod must not alloc
 
 The upstream BetterVisuals source wraps the active game-layer or full-scene `visit()` call in `renderSceneWithPostProcessing()`. It captures the scene into an internal framebuffer, runs configured post-processing, then presents the result to the caller framebuffer.
 
-This is a useful source-frame boundary, but it is not itself a frame-generation implementation. A complete implementation also needs a safe Android presentation hook capable of inserting an interpolated image between two real game frames.
+This is a useful source-frame boundary, but it is not itself a frame-generation implementation. The Geode Android `CCEGLView::swapBuffers()` implementation is empty, so hooking that method alone will not insert an image into the display stream. A complete implementation must trace the Android Java `GLSurfaceView` callback and automatic EGL swap, then prove a safe way to present an interpolated image between two real game frames. A second `eglSwapBuffers` call inside the native callback is not assumed to work: it may block, be followed by the framework's normal swap, or fail to create a separately displayed refresh.
 
 ## Required pipeline
 
@@ -24,7 +24,8 @@ This is a useful source-frame boundary, but it is not itself a frame-generation 
 
 ## Milestones and acceptance gates
 
-- [ ] Identify and verify the Android ARM64 Geode/Cocos presentation hook and its call frequency.
+- [x] Inspect the Geode Android Cocos view API: `CCEGLView::swapBuffers()` exists but its Android implementation is empty, so it is not a usable presentation hook by itself.
+- [ ] Trace the Android Java `GLSurfaceView` render callback and its automatic EGL buffer swap; determine whether an extra presentation can be scheduled without modifying Geode's loader or Java host.
 - [ ] Add an off-by-default setting without changing the default renderer path.
 - [ ] Implement asynchronous GPU frame history capture and lifecycle reset.
 - [ ] Implement and test motion estimation and disocclusion shaders independently.
