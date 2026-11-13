@@ -56,7 +56,11 @@ once('''        g_failedPostProcessKey.reset();
 
 } // namespace
 ''')
-once('''$on_mod(Loaded) {
+once('''#ifdef GEODE_IS_ANDROID
+void betterVisualsFrameGenerationSwapBuffers(cocos2d::CCEGLView* self);
+#endif
+
+$on_mod(Loaded) {
     bindBoolSetting("enabled", g_modEnabled);
 ''',
 '''$on_mod(Loaded) {
