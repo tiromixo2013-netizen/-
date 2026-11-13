@@ -11,6 +11,7 @@ precision highp float;
 uniform sampler2D u_previous;
 uniform sampler2D u_current;
 uniform vec2 u_invResolution;
+uniform float u_currentOnly;
 varying vec2 v_texCoord;
 float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 vec2 estimateFlow(sampler2D fromFrame, sampler2D toFrame, vec2 uv) {
@@ -42,6 +43,10 @@ vec2 estimateFlow(sampler2D fromFrame, sampler2D toFrame, vec2 uv) {
     return clamp(flow, -12.0 * u_invResolution, 12.0 * u_invResolution);
 }
 void main() {
+    if (u_currentOnly > 0.5) {
+        gl_FragColor = texture2D(u_current, v_texCoord);
+        return;
+    }
     vec2 uv = v_texCoord;
     vec2 forwardFlow = estimateFlow(u_previous, u_current, uv);
     vec2 backwardFlow = estimateFlow(u_current, u_previous, uv);
@@ -78,7 +83,8 @@ bool FrameInterpolationRenderer::initialize() {
     m_previousUniform = glGetUniformLocation(m_program, "u_previous");
     m_currentUniform = glGetUniformLocation(m_program, "u_current");
     m_inverseResolutionUniform = glGetUniformLocation(m_program, "u_invResolution");
-    if (m_previousUniform < 0 || m_currentUniform < 0 || m_inverseResolutionUniform < 0) {
+    m_currentOnlyUniform = glGetUniformLocation(m_program, "u_currentOnly");
+    if (m_previousUniform < 0 || m_currentUniform < 0 || m_inverseResolutionUniform < 0 || m_currentOnlyUniform < 0) {
         destroy(); return false;
     }
     glUseProgram(m_program);
@@ -131,8 +137,14 @@ bool FrameInterpolationRenderer::capture(GLuint framebuffer, GLint x, GLint y,
     return true;
 }
 bool FrameInterpolationRenderer::present(int phase) {
+    return presentImpl(phase, false);
+}
+bool FrameInterpolationRenderer::presentCurrent() {
+    return presentImpl(1, true);
+}
+bool FrameInterpolationRenderer::presentImpl(int phase, bool currentOnly) {
     GlStateGuard state;
-    if ((phase != 0 && phase != 1) || !m_hasHistory || !initialize()) return false;
+    if ((phase != 0 && phase != 1) || (currentOnly ? !m_hasCurrent : !m_hasHistory) || !initialize()) return false;
     // Discard stale GL errors from unrelated game rendering. Only errors
     // produced by this presentation pass may trigger our fallback path.
     while (glGetError() != GL_NO_ERROR) {}
@@ -159,8 +171,9 @@ bool FrameInterpolationRenderer::present(int phase) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glUseProgram(m_program);
     glUniform2f(m_inverseResolutionUniform, 1.f / m_width, 1.f / m_height);
+    glUniform1f(m_currentOnlyUniform, currentOnly ? 1.f : 0.f);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_frames[previousIndex]);
+    glBindTexture(GL_TEXTURE_2D, currentOnly ? m_frames[currentIndex] : m_frames[previousIndex]);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, phase == 0 ? m_frames[previousIndex] : m_frames[currentIndex]);
     m_quad.bind();
@@ -177,7 +190,7 @@ bool FrameInterpolationRenderer::present(int phase) {
 void FrameInterpolationRenderer::destroy() {
     if (m_program) glDeleteProgram(m_program);
     m_program = 0;
-    m_previousUniform = m_currentUniform = m_inverseResolutionUniform = -1;
+    m_previousUniform = m_currentUniform = m_inverseResolutionUniform = m_currentOnlyUniform = -1;
     m_quad.reset();
 }
 void FrameInterpolationRenderer::reset() {
