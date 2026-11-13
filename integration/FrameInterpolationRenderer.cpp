@@ -89,8 +89,8 @@ void main(){ v_texCoord=a_texCoord; gl_Position=vec4(a_position,0.0,1.0); }
     return true;
 }
 bool FrameInterpolationRenderer::process(GLuint framebuffer, GLint x, GLint y, GLsizei width, GLsizei height) {
-    if (width <= 0 || height <= 0 || !initialize()) return false;
     GlStateGuard state;
+    if (width <= 0 || height <= 0 || !initialize()) return false;
     if (width != m_width || height != m_height) {
         reset();
         if (!initialize()) return false;
