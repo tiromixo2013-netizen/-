@@ -33,3 +33,4 @@ The workflow currently builds the mod package and validates the Loader source pa
 
 The shader adaptation is marked BSD-3-Clause. See `integration/SGSR1-LICENSE-NOTICE.txt` and the upstream license:
 https://github.com/SnapdragonGameStudios/snapdragon-gsr/blob/main/LICENSE
+
