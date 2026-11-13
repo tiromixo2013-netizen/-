@@ -56,14 +56,14 @@ once('''        g_failedPostProcessKey.reset();
 
 } // namespace
 ''')
-once('''#ifdef GEODE_IS_ANDROID
+once('''$on_mod(Loaded) {
+    bindBoolSetting("enabled", g_modEnabled);
+''',
+'''#ifdef GEODE_IS_ANDROID
 void betterVisualsFrameGenerationSwapBuffers(cocos2d::CCEGLView* self);
 #endif
 
 $on_mod(Loaded) {
-    bindBoolSetting("enabled", g_modEnabled);
-''',
-'''$on_mod(Loaded) {
     bindBoolSetting("enabled", g_modEnabled);
     bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);
 #ifdef GEODE_IS_ANDROID
