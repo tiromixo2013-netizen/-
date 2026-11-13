@@ -1,4 +1,4 @@
-name: Build BetterVisuals GSR1 + FSR 1 (Android ARM64)
+name: Build BetterVisuals GSR1 + FSR 1 + Frame Interpolation (Android ARM64)
 
 on:
   push:
@@ -24,11 +24,15 @@ jobs:
         with:
           path: integration
 
-      - name: Apply SGSR1 and FSR 1 integration
+      - name: Apply SGSR1, FSR 1, and Frame Interpolation integration
         run: |
           cp integration/integration/apply_patch.py ./apply_sgsr1_patch.py
           cp integration/integration/Sgsr1Shader.cpp ./src/shaders/Sgsr1Shader.cpp
           python3 ./apply_sgsr1_patch.py
+          cp integration/integration/FrameInterpolationRenderer.hpp ./src/render/FrameInterpolationRenderer.hpp
+          cp integration/integration/FrameInterpolationRenderer.cpp ./src/render/FrameInterpolationRenderer.cpp
+          cp integration/integration/apply_frame_generation.py ./apply_frame_generation.py
+          python3 ./apply_frame_generation.py
           python3 - <<'PY'
           import json, re
           from pathlib import Path
@@ -113,7 +117,7 @@ jobs:
       - name: Upload Geode package
         uses: actions/upload-artifact@v4
         with:
-          name: BetterVisuals-FSR1-SGSR1-Android64
+          name: BetterVisuals-FSR1-SGSR1-FrameInterpolation-Android64
           path: ${{ steps.build.outputs.build-output }}
           if-no-files-found: error
           retention-days: 14
