@@ -148,8 +148,12 @@ sub("""        auto const renderScale = g_renderScale.load(std::memory_order_rel
         // FSR quality modes are absolute input/output ratios. Do not multiply
         // them by the independent manual Render Scale: compounding the two can
         // create tiny/invalid targets on mobile GPUs and break the presentation pass.
-        auto const effectiveScale = (usesFsrPreset ? fsrPresetScale : manualRenderScale) *
-            ssaaFactor(config.aa);""")
+        // FSR1 quality presets define the complete input/output ratio.
+        // SSAA is a separate supersampling path and must not override FSR1's
+        // presentation pass. When FSR1 is selected, its preset owns the scale.
+        // For non-FSR modes, preserve the manual scale and SSAA multiplier.
+        auto const effectiveScale = usesFsrPreset ? fsrPresetScale :
+            manualRenderScale * ssaaFactor(config.aa);""")
 sub("""    bindStringSetting("upscale-method", updateUpscaleMethod);""", """    bindStringSetting("upscale-method", updateUpscaleMethod);
     bindStringSetting("fsr-quality-preset", updateFsrQualityPreset);""")
 main.write_text(s)
@@ -183,12 +187,15 @@ mod["settings"]["upscale-method"]["description"] = (
 )
 mod["settings"]["fsr-sharpness"]["name"] = "FSR 1 Sharpness"
 mod["settings"]["fsr-sharpness"]["description"] = (
-    "Controls FSR 1 reconstruction sharpness."
+    "Controls FSR 1 EASU reconstruction sharpness."
+)
+mod["settings"]["render-scale"]["description"] = (
+    "Internal render scale for Nearest, Bilinear, and SGSR1. FSR 1 uses its own Quality Preset instead."
 )
 mod["settings"]["fsr-quality-preset"] = {
     "type": "string",
     "name": "FSR Quality Preset",
-    "description": "Extra FSR input-resolution multiplier. It multiplies with the manual Render Scale; it does not replace it.",
+    "description": "Selects the complete FSR 1 input resolution relative to the final display resolution. This replaces manual Render Scale while FSR 1 is selected.",
     "default": "Quality",
     "one-of": ["Ultra Quality", "Quality", "Balanced", "Performance"],
     "enable-if": "saved:fsr-preset-enabled",
