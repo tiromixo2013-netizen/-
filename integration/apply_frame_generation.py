@@ -28,8 +28,11 @@ once('        g_bloomRenderer.reset();\n',
      '        g_bloomRenderer.reset();\n        g_frameInterpolationRenderer.reset();\n')
 once('    bindBoolSetting("enabled", g_modEnabled);\n',
      '    bindBoolSetting("enabled", g_modEnabled);\n    bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);\n')
-once('        auto const needsPresentation = internalWidth != width || internalHeight != height;\\n',
-     '        auto const frameGeneration = g_frameGenerationEnabled.load(std::memory_order_relaxed);\\n        auto const needsPresentation = internalWidth != width || internalHeight != height || frameGeneration;\\n')
+once('''        auto const needsPresentation = internalWidth != width || internalHeight != height;
+''',
+'''        auto const frameGeneration = g_frameGenerationEnabled.load(std::memory_order_relaxed);
+        auto const needsPresentation = internalWidth != width || internalHeight != height || frameGeneration;
+''')
 once('''        glBindFramebuffer(GL_FRAMEBUFFER, callerTarget.framebuffer);
         glViewport(callerTarget.x, callerTarget.y, callerTarget.width, callerTarget.height);
         g_failedPostProcessKey.reset();
