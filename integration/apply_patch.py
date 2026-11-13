@@ -135,7 +135,6 @@ sub("""    void bindBoolSetting(char const* name, std::atomic<bool>& value) {"""
         else if (value == "Quality") scale = 0.67f;
         else if (value == "Balanced") scale = 0.59f;
         else if (value == "Performance") scale = 0.50f;
-        else if (value == "Ultra Performance") scale = 0.33f;
         else log::warn("Unknown FSR quality preset '{}', using Quality", value);
         g_fsrPresetScale.store(scale, std::memory_order_relaxed);
     }
@@ -146,7 +145,11 @@ sub("""        auto const renderScale = g_renderScale.load(std::memory_order_rel
         auto const usesFsrPreset = config.upscaling == UpscaleMethod::Fsr;
         auto const fsrPresetScale = usesFsrPreset ?
             g_fsrPresetScale.load(std::memory_order_relaxed) : 1.f;
-        auto const effectiveScale = manualRenderScale * fsrPresetScale * ssaaFactor(config.aa);""")
+        // FSR quality modes are absolute input/output ratios. Do not multiply
+        // them by the independent manual Render Scale: compounding the two can
+        // create tiny/invalid targets on mobile GPUs and break the presentation pass.
+        auto const effectiveScale = (usesFsrPreset ? fsrPresetScale : manualRenderScale) *
+            ssaaFactor(config.aa);""")
 sub("""    bindStringSetting("upscale-method", updateUpscaleMethod);""", """    bindStringSetting("upscale-method", updateUpscaleMethod);
     bindStringSetting("fsr-quality-preset", updateFsrQualityPreset);""")
 main.write_text(s)
@@ -187,7 +190,7 @@ mod["settings"]["fsr-quality-preset"] = {
     "name": "FSR Quality Preset",
     "description": "Extra FSR input-resolution multiplier. It multiplies with the manual Render Scale; it does not replace it.",
     "default": "Quality",
-    "one-of": ["Ultra Quality", "Quality", "Balanced", "Performance", "Ultra Performance"],
+    "one-of": ["Ultra Quality", "Quality", "Balanced", "Performance"],
     "enable-if": "saved:fsr-preset-enabled",
     "enable-if-description": "Select FSR 1 in Upscale Method"
 }
