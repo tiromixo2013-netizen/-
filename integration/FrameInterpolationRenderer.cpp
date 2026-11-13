@@ -69,7 +69,12 @@ bool FrameInterpolationRenderer::initialize() {
     std::array vs{std::string_view(kVertex)};
     std::array fs{std::string_view(kFrameInterpolationFragment)};
     m_program = compileShaderProgram("Frame Generation (Lucas-Kanade)", vs, fs);
-    if (!m_program || !m_quad.initialize("frame generation")) return false;
+    if (!m_program) return false;
+    if (!m_quad.initialize("frame generation")) {
+        glDeleteProgram(m_program);
+        m_program = 0;
+        return false;
+    }
     m_previousUniform = glGetUniformLocation(m_program, "u_previous");
     m_currentUniform = glGetUniformLocation(m_program, "u_current");
     m_inverseResolutionUniform = glGetUniformLocation(m_program, "u_invResolution");
@@ -107,6 +112,12 @@ bool FrameInterpolationRenderer::capture(GLuint framebuffer, GLint x, GLint y,
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_frames[m_writeIndex]);
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, width, height);
+    if (glGetError() != GL_NO_ERROR) {
+        // A failed capture must never be used as frame history. Drop both
+        // textures so the Loader callback falls back to the game's own frame.
+        reset();
+        return false;
+    }
     m_currentIndex = m_writeIndex;
     m_writeIndex = 1u - m_writeIndex;
     if (m_hasCurrent) m_hasHistory = true;
@@ -116,6 +127,9 @@ bool FrameInterpolationRenderer::capture(GLuint framebuffer, GLint x, GLint y,
 bool FrameInterpolationRenderer::present(int phase) {
     GlStateGuard state;
     if ((phase != 0 && phase != 1) || !m_hasHistory || !initialize()) return false;
+    // Discard stale GL errors from unrelated game rendering. Only errors
+    // produced by this presentation pass may trigger our fallback path.
+    while (glGetError() != GL_NO_ERROR) {}
     unsigned const previousIndex = 1u - m_currentIndex;
     unsigned const currentIndex = m_currentIndex;
     // The captured game texture can be smaller than the EGL surface (for
@@ -145,7 +159,14 @@ bool FrameInterpolationRenderer::present(int phase) {
     glBindTexture(GL_TEXTURE_2D, phase == 0 ? m_frames[previousIndex] : m_frames[currentIndex]);
     m_quad.bind();
     FullscreenQuad::draw();
-    return glGetError() == GL_NO_ERROR;
+    auto const error = glGetError();
+    if (error != GL_NO_ERROR) {
+        // Do not keep presenting a potentially incomplete generated image.
+        // The Loader will present the game's original frame on the next tick.
+        reset();
+        return false;
+    }
+    return true;
 }
 void FrameInterpolationRenderer::destroy() {
     if (m_program) glDeleteProgram(m_program);
