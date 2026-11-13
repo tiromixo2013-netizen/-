@@ -54,6 +54,55 @@ jobs:
         with:
           combine: true
           target: Android64
+  build-loader:
+    name: Build custom Geode Android64 Loader
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout integration overlay
+        uses: actions/checkout@v4
+        with:
+          path: integration
+      - name: Checkout pinned Geode Loader
+        uses: actions/checkout@v4
+        with:
+          repository: geode-sdk/geode
+          ref: d22af2464ec97ab6c0fbef18004e82f3d2f36713
+          path: geode-loader
+      - name: Apply Frame Generation bridge
+        run: |
+          python3 integration/loader-patch/apply_loader_patch.py geode-loader
+          git -C geode-loader diff --check
+          grep -q "nativePresentGeneratedFrame" geode-loader/loader/include/Geode/cocos/platform/android/java/src/org/cocos2dx/lib/Cocos2dxRenderer.java
+          grep -q "GeodeSetFrameGenerationPresentCallback" geode-loader/loader/include/Geode/cocos/platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxRenderer.cpp
+      - name: Record custom Loader source hash
+        id: commit
+        run: echo "hash=$(git -C geode-loader describe --always --dirty)" >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build custom Android64 Geode Loader
+        uses: docker/build-push-action@v6
+        with:
+          context: ./geode-loader
+          file: ./geode-loader/Dockerfile
+          target: export-android64
+          outputs: type=local,dest=./out/android64
+          cache-from: type=gha,scope=framegen-geode-android64
+          cache-to: type=gha,mode=max,scope=framegen-geode-android64
+          build-contexts: |
+            bindings=https://github.com/geode-sdk/bindings.git#main
+          build-args: |
+            BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
+            GEODE_COMMIT_HASH=${{ steps.commit.outputs.hash }}
+          provenance: false
+      - name: Verify custom Loader binary
+        run: test -s out/android64/Geode.android64.so
+      - name: Upload custom Loader binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: Geode-FrameGeneration-Loader-Android64
+          path: out/android64/Geode.android64.so
+          if-no-files-found: error
+          retention-days: 14
   package:
     name: Package Android64 Geode mod
     runs-on: ubuntu-latest
