@@ -15,7 +15,7 @@ varying vec2 v_texCoord;
 float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 vec2 estimateFlow(sampler2D fromFrame, sampler2D toFrame, vec2 uv) {
     vec2 flow = vec2(0.0);
-    for (int iteration = 0; iteration < 3; ++iteration) {
+    for (int iteration = 0; iteration < 2; ++iteration) {
         float a = 0.0, b = 0.0, c = 0.0, d = 0.0, e = 0.0;
         for (int y = -1; y <= 1; ++y) {
             for (int x = -1; x <= 1; ++x) {
@@ -104,10 +104,16 @@ bool FrameInterpolationRenderer::capture(GLuint framebuffer, GLint x, GLint y,
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
                          GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         }
+        if (glGetError() != GL_NO_ERROR) {
+            reset();
+            return false;
+        }
         m_width = width; m_height = height;
         m_writeIndex = 0; m_currentIndex = 0;
         m_hasCurrent = false; m_hasHistory = false;
     }
+    // Clear errors left by the game's own draw calls before validating our copy.
+    while (glGetError() != GL_NO_ERROR) {}
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_frames[m_writeIndex]);
