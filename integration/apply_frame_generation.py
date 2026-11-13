@@ -62,6 +62,17 @@ once('''$on_mod(Loaded) {
 '''$on_mod(Loaded) {
     bindBoolSetting("enabled", g_modEnabled);
     bindBoolSetting("frame-generation-enabled", g_frameGenerationEnabled);
+#ifdef GEODE_IS_ANDROID
+    auto const swapHook = Mod::get()->hook(
+        reinterpret_cast<void*>(geode::addresser::getNonVirtual(&cocos2d::CCEGLView::swapBuffers)),
+        &betterVisualsFrameGenerationSwapBuffers,
+        "CCEGLView::swapBuffers (Frame Generation)",
+        tulip::hook::TulipConvention::Cdecl
+    );
+    if (!swapHook) {
+        log::warn("Could not hook CCEGLView::swapBuffers; Frame Generation will remain inactive");
+    }
+#endif
 ''')
 
 once('''class $modify(BetterVisualsDirectorHook, CCDirector) {
@@ -111,20 +122,20 @@ once('''class $modify(BetterVisualsDirectorHook, CCDirector) {
 };
 
 #ifdef GEODE_IS_ANDROID
-class $modify(BetterVisualsFrameGenerationSwapHook, cocos2d::CCEGLView) {
-    void swapBuffers() {
-        if (!g_frameGenerationManualSwap.load(std::memory_order_relaxed) &&
-            g_frameGenerationEnabled.load(std::memory_order_relaxed) &&
-            g_modEnabled.load(std::memory_order_relaxed) &&
-            !g_temporarilyDisabled.load(std::memory_order_relaxed) &&
-            g_frameGenerationCaptureReady.exchange(false, std::memory_order_relaxed)) {
-            if (g_frameInterpolationRenderer.present(1)) {
-                g_frameGenerationShowSource.store(true, std::memory_order_relaxed);
-            }
+void betterVisualsFrameGenerationSwapBuffers(cocos2d::CCEGLView* self) {
+    if (!g_frameGenerationManualSwap.load(std::memory_order_relaxed) &&
+        g_frameGenerationEnabled.load(std::memory_order_relaxed) &&
+        g_modEnabled.load(std::memory_order_relaxed) &&
+        !g_temporarilyDisabled.load(std::memory_order_relaxed) &&
+        g_frameGenerationCaptureReady.exchange(false, std::memory_order_relaxed)) {
+        if (g_frameInterpolationRenderer.present(1)) {
+            g_frameGenerationShowSource.store(true, std::memory_order_relaxed);
         }
-        cocos2d::CCEGLView::swapBuffers();
     }
-};
+    // TulipHook's per-thread handler chain routes this same call to the next
+    // handler, ultimately reaching the original CCEGLView implementation.
+    self->swapBuffers();
+}
 #endif''');
 main.write_text(s)
 
