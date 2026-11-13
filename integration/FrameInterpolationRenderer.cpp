@@ -181,7 +181,7 @@ bool FrameInterpolationRenderer::presentImpl(int phase, bool currentOnly) {
     auto const error = glGetError();
     if (error != GL_NO_ERROR) {
         // Do not keep presenting a potentially incomplete generated image.
-        // The Loader will present the game's original frame on the next tick.
+        // Cocos falls back to the game's original frame on the next draw callback.
         reset();
         return false;
     }
